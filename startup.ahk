@@ -11,6 +11,7 @@ SetControlDelay -1
 scripts := [
     "VD-navigate-wraparound.ahk",
     "VD-move-window.ahk",
+    "VD-numpad-desktops.ahk",
     "VD-pin-app.ahk"
 ]
 
