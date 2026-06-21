@@ -33,62 +33,42 @@ return
 ; # = Win
 ; + = Shift
 
-; MOVE CURRENT WINDOW TO NEXT DESKTOP + SWITCH DESKTOPS 
-; CTRL+ALT+WIN+Right 
+; --- Hotkeys -----------------------------------------------------------------
+; Move + follow:  Ctrl+Alt+Win+Arrow  and  Ctrl+Win+Shift+Arrow (alias)
+; Move + stay:    Alt+Win+Arrow
 
-^!#Right:: {
+^!#Right:: MoveActiveWindowToAdjacentDesktop(1, true)
+^!#Left::  MoveActiveWindowToAdjacentDesktop(-1, true)
+
+^#+Right:: MoveActiveWindowToAdjacentDesktop(1, true)
+^#+Left::  MoveActiveWindowToAdjacentDesktop(-1, true)
+
+!#Right::  MoveActiveWindowToAdjacentDesktop(1, false)
+!#Left::   MoveActiveWindowToAdjacentDesktop(-1, false)
+
+; --- Core --------------------------------------------------------------------
+; direction:  1 = next desktop, -1 = previous desktop (both wrap around)
+; follow:     true  = switch to the target desktop and reactivate the window
+;             false = move the window but stay on the current desktop
+MoveActiveWindowToAdjacentDesktop(direction, follow) {
+    activeWindow := WinExist("A")
+    if (!activeWindow) ; nothing focused (e.g. desktop itself) - bail
+        return
+
     currentDesktop := VD.getCurrentDesktopNum()
     totalDesktops := VD.getCount()
 
-    ; Loop around to the first desktop if at the last one
-    nextDesktop := (currentDesktop = totalDesktops) ? 1 : currentDesktop + 1
-    activeWindow := WinExist("A")
-    VD.goToDesktopNum(nextDesktop)
-    VD.MoveWindowToDesktopNum("ahk_id " activeWindow, nextDesktop)
-    WinActivate("ahk_id " activeWindow)
-}
+    if (direction > 0)
+        targetDesktop := (currentDesktop = totalDesktops) ? 1 : currentDesktop + 1
+    else
+        targetDesktop := (currentDesktop = 1) ? totalDesktops : currentDesktop - 1
 
-; MOVE CURRENT WINDOW TO PREV DESKTOP + SWITCH DESKTOPS 
-; CTRL+ALT+WIN+Left 
+    ; Move the window first, while everything is still stable on this desktop.
+    VD.MoveWindowToDesktopNum("ahk_id " activeWindow, targetDesktop)
 
-^!#Left:: {
-    currentDesktop := VD.getCurrentDesktopNum()
-    totalDesktops := VD.getCount()
-
-    ; Loop around to the last desktop if at the first one
-    previousDesktop := (currentDesktop = 1) ? totalDesktops : currentDesktop - 1
-    activeWindow := WinExist("A")
-    VD.goToDesktopNum(previousDesktop)
-    VD.MoveWindowToDesktopNum("ahk_id " activeWindow, previousDesktop)
-    WinActivate("ahk_id " activeWindow) ; Once in a while it's not active
-}
-
-; MOVE CURRENT WINDOW TO NEXT DESKTOP 
-; ALT+WIN+Right 
-
-!#Right:: {
-    currentDesktop := VD.getCurrentDesktopNum()
-    totalDesktops := VD.getCount()
-
-    ; Loop around to the first desktop if at the last one
-    nextDesktop := (currentDesktop = totalDesktops) ? 1 : currentDesktop + 1
-    activeWindow := WinExist("A")
-;    VD.goToDesktopNum(nextDesktop)
-    VD.MoveWindowToDesktopNum("ahk_id " activeWindow, nextDesktop)
-;    WinActivate("ahk_id " activeWindow)
-}
-
-; MOVE CURRENT WINDOW TO PREV DESKTOP 
-; ALT+WIN+Left 
-
-!#Left:: {
-    currentDesktop := VD.getCurrentDesktopNum()
-    totalDesktops := VD.getCount()
-
-    ; Loop around to the last desktop if at the first one
-    previousDesktop := (currentDesktop = 1) ? totalDesktops : currentDesktop - 1
-    activeWindow := WinExist("A")
-;    VD.goToDesktopNum(previousDesktop)
-    VD.MoveWindowToDesktopNum("ahk_id " activeWindow, previousDesktop)
-;    WinActivate("ahk_id " activeWindow) ; Once in a while it's not active
+    if (follow) {
+        VD.goToDesktopNum(targetDesktop)
+        Sleep 50  ; Let the (async) desktop switch settle before reactivating.
+        WinActivate("ahk_id " activeWindow) ; Once in a while it's not active.
+    }
 }
