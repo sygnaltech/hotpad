@@ -12,7 +12,6 @@ scripts := [
     "VD-navigate-wraparound.ahk",
     "VD-move-window.ahk",
     "VD-move-window-with-desktop.ahk",
-    "ChromeAppsKey.ahk",
     "VD-pin-app.ahk"
 ]
 
