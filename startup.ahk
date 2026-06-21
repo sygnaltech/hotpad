@@ -8,18 +8,20 @@ ProcessSetPriority "H"
 SetWinDelay -1
 SetControlDelay -1
 
+; Standalone scripts to launch as separate processes (each gets its own tray
+; icon). The virtual-desktop suite is NOT here - it's #Included below so it runs
+; in THIS process (one tray icon). Add future standalone scripts to this list.
 scripts := [
-    "VD-navigate-wraparound.ahk",
-    "VD-move-window.ahk",
-    "VD-numpad-desktops.ahk",
-    "VD-pin-app.ahk"
 ]
 
 for script in scripts {
     LaunchScript(script)
 }
 
-return
+; Load the consolidated virtual-desktop suite in-process (single tray icon).
+; Must be included here, inside the auto-execute section (before any `return`),
+; so its runtime-registered Numpad hotkeys actually bind.
+#Include VD-combined.ahk
 
 LaunchScript(scriptName) {
     scriptPath := A_ScriptDir "\" scriptName
