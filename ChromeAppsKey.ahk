@@ -8,8 +8,23 @@ ProcessSetPriority "H"
 SetWinDelay -1
 SetControlDelay -1
 
-#HotIf WinActive("ahk_exe chrome.exe")
-AppsKey:: {
-    Send "^+a" ; Open Chrome tab search (Ctrl+Shift+A)
+; Remap Windows emoji hotkeys to activate Chrome and open tab search
+#.:: {  ; Win + . (period)
+    ; Find the topmost Chrome window
+    if WinExist("ahk_exe chrome.exe") {
+        WinActivate  ; Activate the Chrome window we found
+        Sleep 50     ; Brief delay to ensure activation completes
+        Send "^+a"   ; Open Chrome tab search (Ctrl+Shift+A)
+    }
+    return
 }
-#HotIf
+
+#;:: {  ; Win + ; (semicolon)
+    ; Find the topmost Chrome window
+    if WinExist("ahk_exe chrome.exe") {
+        WinActivate  ; Activate the Chrome window we found
+        Sleep 50     ; Brief delay to ensure activation completes
+        Send "^+a"   ; Open Chrome tab search (Ctrl+Shift+A)
+    }
+    return
+}
