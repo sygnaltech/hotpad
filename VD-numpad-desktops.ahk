@@ -70,7 +70,18 @@ MoveActiveWindowToDesktop(target, follow) {
 
     if (follow) {
         VD.goToDesktopNum(target)
-        Sleep 50  ; Let the (async) desktop switch settle before reactivating.
-        WinActivate("ahk_id " activeWindow)
+        WaitForDesktop(target) ; the switch is async - wait for it to actually land
+        try WinActivate("ahk_id " activeWindow) ; best-effort: a miss is harmless
+    }
+}
+
+; Poll until the active desktop is the target (or we time out ~200ms).
+; goToDesktopNum returns before the switch completes, so a window moved there
+; is briefly unaddressable; activating it too early throws "target not found".
+WaitForDesktop(target) {
+    Loop 20 {
+        if (VD.getCurrentDesktopNum() = target)
+            return
+        Sleep 10
     }
 }
