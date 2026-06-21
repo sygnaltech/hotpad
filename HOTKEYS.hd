@@ -1,0 +1,238 @@
+---
+title: VD Script Hotkey Reference
+description: Supported hotkeys for the VD-* AutoHotKey scripts (virtual desktop and window management)
+date: 2026-06-22T00:00:00.000Z
+author: mike@sygnal.com
+tags:
+  - autohotkey
+  - hotkeys
+  - virtual-desktops
+  - windows-11
+version: 1
+id: 3RWAxrhBQt5gzNCtkZvgex
+---
+
+<h1>VD Script Hotkey Reference</h1>
+
+<p>This document lists every hotkey defined by the <code>VD-*</code> AutoHotKey
+v2 scripts in this repository. Each script is independent; run only the ones you
+want. All depend on the <a href="https://github.com/FuPeiJiang/VD.ahk">VD.ahk</a>
+library for virtual-desktop control.</p>
+
+<p>Modifier shorthand used in the source: <kbd>^</kbd> = Ctrl, <kbd>#</kbd> = Win,
+<kbd>!</kbd> = Alt, <kbd>+</kbd> = Shift.</p>
+
+<section>
+<h2>All hotkeys at a glance</h2>
+
+<table>
+<caption>Every hotkey across the VD-* scripts</caption>
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th scope="col">Hotkey</th>
+<th scope="col">Action</th>
+<th scope="col">Script</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>←</kbd></td>
+<td>Navigate to previous desktop (wraps to last)</td>
+<td><a href="VD-navigate-wraparound.ahk">VD-navigate-wraparound.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>→</kbd></td>
+<td>Navigate to next desktop (wraps to first)</td>
+<td><a href="VD-navigate-wraparound.ahk">VD-navigate-wraparound.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>←</kbd></td>
+<td>Move active window to previous desktop <strong>and follow it</strong></td>
+<td><a href="VD-move-window-with-desktop.ahk">VD-move-window-with-desktop.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>→</kbd></td>
+<td>Move active window to next desktop <strong>and follow it</strong></td>
+<td><a href="VD-move-window-with-desktop.ahk">VD-move-window-with-desktop.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>←</kbd></td>
+<td>Move active window to previous desktop and follow it</td>
+<td><a href="VD-move-window.ahk">VD-move-window.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>→</kbd></td>
+<td>Move active window to next desktop and follow it</td>
+<td><a href="VD-move-window.ahk">VD-move-window.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>←</kbd></td>
+<td>Move active window to previous desktop, <strong>stay</strong> on current</td>
+<td><a href="VD-move-window.ahk">VD-move-window.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>→</kbd></td>
+<td>Move active window to next desktop, <strong>stay</strong> on current</td>
+<td><a href="VD-move-window.ahk">VD-move-window.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>V</kbd></td>
+<td>Tile all windows on this desktop vertically</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>H</kbd></td>
+<td>Tile all windows on this desktop horizontally</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>C</kbd></td>
+<td>Cascade all windows on this desktop</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>V</kbd></td>
+<td>Tile only same-process windows vertically</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>H</kbd></td>
+<td>Tile only same-process windows horizontally</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>C</kbd></td>
+<td>Cascade only same-process windows</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>Numpad +</kbd></td>
+<td>Bring all same-process windows to the front</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>Numpad −</kbd></td>
+<td>Send all same-process windows to the back</td>
+<td><a href="VD-cascade.ahk">VD-cascade.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>Z</kbd></td>
+<td>Pin / unpin the active <strong>app</strong> (all its windows) on every desktop</td>
+<td><a href="VD-pin-app.ahk">VD-pin-app.ahk</a></td>
+</tr>
+<tr>
+<td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>X</kbd></td>
+<td>Pin / unpin only the focused <strong>window</strong> on every desktop</td>
+<td><a href="VD-pin-app.ahk">VD-pin-app.ahk</a></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>By script</h2>
+
+<article>
+<h3><a href="VD-navigate-wraparound.ahk">VD-navigate-wraparound.ahk</a></h3>
+<p>Switch between virtual desktops with wrap-around at the ends.</p>
+<table>
+<thead>
+<tr><th scope="col">Hotkey</th><th scope="col">Source</th><th scope="col">Action</th></tr>
+</thead>
+<tbody>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>←</kbd></td><td><code>^#Left</code></td><td>Go to previous desktop; wraps to the last desktop from the first.</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>→</kbd></td><td><code>^#Right</code></td><td>Go to next desktop; wraps to the first desktop from the last.</td></tr>
+</tbody>
+</table>
+</article>
+
+<article>
+<h3><a href="VD-move-window-with-desktop.ahk">VD-move-window-with-desktop.ahk</a></h3>
+<p>Move the active window to an adjacent desktop and follow it there. Ensures at
+least 3 desktops exist on startup.</p>
+<table>
+<thead>
+<tr><th scope="col">Hotkey</th><th scope="col">Source</th><th scope="col">Action</th></tr>
+</thead>
+<tbody>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>←</kbd></td><td><code>^#+Left</code></td><td>Move window to previous desktop (wrap) and switch there.</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>→</kbd></td><td><code>^#+Right</code></td><td>Move window to next desktop (wrap) and switch there.</td></tr>
+</tbody>
+</table>
+</article>
+
+<article>
+<h3><a href="VD-move-window.ahk">VD-move-window.ahk</a></h3>
+<p>Move the active window to an adjacent desktop, with separate "follow" and
+"stay" variants. Ensures at least 3 desktops exist on startup.</p>
+<table>
+<thead>
+<tr><th scope="col">Hotkey</th><th scope="col">Source</th><th scope="col">Action</th></tr>
+</thead>
+<tbody>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>→</kbd></td><td><code>^!#Right</code></td><td>Move window to next desktop (wrap) and follow it.</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>←</kbd></td><td><code>^!#Left</code></td><td>Move window to previous desktop (wrap) and follow it.</td></tr>
+<tr><td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>→</kbd></td><td><code>!#Right</code></td><td>Move window to next desktop (wrap); stay on current desktop.</td></tr>
+<tr><td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>←</kbd></td><td><code>!#Left</code></td><td>Move window to previous desktop (wrap); stay on current desktop.</td></tr>
+</tbody>
+</table>
+</article>
+
+<article>
+<h3><a href="VD-cascade.ahk">VD-cascade.ahk</a></h3>
+<p>Tile or cascade the windows on the current desktop. Add <kbd>Shift</kbd> to
+limit the operation to windows of the active window's process.</p>
+<table>
+<thead>
+<tr><th scope="col">Hotkey</th><th scope="col">Source</th><th scope="col">Scope</th><th scope="col">Action</th></tr>
+</thead>
+<tbody>
+<tr><td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>V</kbd></td><td><code>!#V</code></td><td>All windows</td><td>Tile vertically.</td></tr>
+<tr><td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>H</kbd></td><td><code>!#H</code></td><td>All windows</td><td>Tile horizontally.</td></tr>
+<tr><td><kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>C</kbd></td><td><code>!#C</code></td><td>All windows</td><td>Cascade (Z-order).</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>V</kbd></td><td><code>+!#V</code></td><td>Same process</td><td>Tile vertically, then bring to front.</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>H</kbd></td><td><code>+!#H</code></td><td>Same process</td><td>Tile horizontally, then bring to front.</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>C</kbd></td><td><code>+!#C</code></td><td>Same process</td><td>Cascade (Z-order), then bring to front.</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>Numpad +</kbd></td><td><code>+!#NumpadAdd</code></td><td>Same process</td><td>Bring all same-process windows to the front.</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Win</kbd> + <kbd>Numpad −</kbd></td><td><code>+!#NumpadSub</code></td><td>Same process</td><td>Send all same-process windows to the back.</td></tr>
+</tbody>
+</table>
+</article>
+
+<article>
+<h3><a href="VD-pin-app.ahk">VD-pin-app.ahk</a></h3>
+<p>Pin apps or individual windows so they appear on every virtual desktop. Both
+hotkeys toggle: pressing again unpins. A transient tooltip confirms the result.</p>
+<table>
+<thead>
+<tr><th scope="col">Hotkey</th><th scope="col">Source</th><th scope="col">Action</th></tr>
+</thead>
+<tbody>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>Z</kbd></td><td><code>^#z</code></td><td>Toggle pinning of the active app's executable — all of its windows show on every desktop.</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Win</kbd> + <kbd>X</kbd></td><td><code>^#x</code></td><td>Toggle pinning of just the currently focused window on every desktop.</td></tr>
+</tbody>
+</table>
+</article>
+</section>
+
+<section>
+<h2>Notes</h2>
+<ul>
+<li><strong>Overlapping desktop-move scripts.</strong>
+<a href="VD-move-window.ahk">VD-move-window.ahk</a> and
+<a href="VD-move-window-with-desktop.ahk">VD-move-window-with-desktop.ahk</a> both
+move the active window between desktops. They use different modifier combinations
+and don't collide directly, but running both gives you two "follow" bindings for
+the same action — pick the one you prefer.</li>
+<li><strong>Wrap-around everywhere.</strong> All navigation and move hotkeys wrap
+from the last desktop back to the first and vice versa.</li>
+<li><strong>Startup behavior.</strong> The move scripts call
+<code>VD.createUntil(3)</code> on launch, ensuring at least three virtual
+desktops exist.</li>
+</ul>
+</section>
