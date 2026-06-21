@@ -45,6 +45,12 @@ try {
 ;#SETUP END
 
 ; ---- Init (auto-execute section) -------------------------------------------
+; Distinct tray icon + tooltip so the single combined process is identifiable.
+; A_ScriptDir is the entry script's dir (works whether run directly or #Included
+; from startup.ahk, since both live alongside VD-icon.ico).
+TraySetIcon A_ScriptDir "\VD-icon.ico"
+A_IconTip := "Virtual Desktop Suite"
+
 VD.createUntil(3) ; Create until we have at least 3 virtual desktops
 
 ; The Numpad1..9 hotkeys are registered at runtime, so this loop MUST run in the

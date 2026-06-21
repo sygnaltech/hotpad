@@ -8,6 +8,16 @@ This document provides a detailed technical analysis of all AutoHotKey scripts i
 
 All scripts are written in AutoHotKey v2.0 and depend on the [VD.ahk](https://github.com/FuPeiJiang/VD.ahk) library (v2_port branch) for virtual desktop management functionality.
 
+### Current layout (consolidated)
+
+The virtual-desktop functionality is now consolidated into a **single** script, [VD-combined.ahk](VD-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `VD-icon.ico`, with the tray tooltip "Virtual Desktop Suite").
+
+- **[startup.ahk](startup.ahk)** is the entry point. It `#Include`s `VD-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
+- **[VD-combined.ahk](VD-combined.ahk)** merges what used to be four separate scripts: `VD-navigate-wraparound.ahk`, `VD-move-window.ahk`, `VD-numpad-desktops.ahk`, and `VD-pin-app.ahk`. It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
+- The four original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `VD-move-window-with-desktop.ahk` was merged into `VD-move-window.ahk` and removed.
+
+The per-script sections below document the original scripts; their logic is what `VD-combined.ahk` consolidates.
+
 ### Common Setup Pattern
 
 Most scripts share a common initialization pattern:
@@ -66,7 +76,9 @@ Returns an array of window handles for a given process, filtering:
 
 ---
 
-### 2. VD-move-window-with-desktop.ahk
+### 2. VD-move-window-with-desktop.ahk  *(merged & removed)*
+
+> **Note:** This script no longer exists. Its move-and-follow behavior was merged into [VD-move-window.ahk](VD-move-window.ahk) (and now [VD-combined.ahk](VD-combined.ahk)) as a normalized follow path, with `Win + Ctrl + Shift + Left/Right` retained as an alias for the `Ctrl + Alt + Win + Left/Right` follow hotkeys. The description below is kept for historical context.
 
 **Purpose:** Move the active window to adjacent virtual desktop and follow it.
 
@@ -285,33 +297,28 @@ This is necessary because AutoHotKey arrays cannot be directly passed to DLL fun
 
 ## Usage Recommendations
 
-### Recommended Script Combination
+### Recommended setup
 
-For complete functionality, run these three scripts:
+Run **[startup.ahk](startup.ahk)** — it loads the consolidated [VD-combined.ahk](VD-combined.ahk) suite in-process (one tray icon) covering navigation, window moving (relative + numpad-absolute), and pinning. No need to launch the individual VD scripts.
 
-1. **[VD-move-window-with-desktop.ahk](#2-vd-move-window-with-desktopahk)** - Window movement with desktop switching
-2. **[VD-cascade.ahk](#4-vd-cascadeahk)** - Window arrangement
-3. **[AppSpecificTabSwitcher.ahk](#1-appspecifictabswitcherahk)** - App window cycling
-
-### Alternative: VD-move-window.ahk
-
-Use **[VD-move-window.ahk](#3-vd-move-windowahk)** instead of VD-move-window-with-desktop.ahk if you prefer to have both "follow" and "don't follow" options when moving windows between desktops.
+[VD-cascade.ahk](VD-cascade.ahk) (window tiling/cascading) and [AppSpecificTabSwitcher.ahk](AppSpecificTabSwitcher.ahk) (app window cycling) are **not** part of the consolidated suite or startup; run them separately if you want them.
 
 ### Startup Configuration
 
-To auto-start scripts with Windows:
+To auto-start with Windows:
 
-1. Create shortcuts to desired `.ahk` files
+1. Create a shortcut to **[startup.ahk](startup.ahk)**
 2. Press `Win+R` and type `shell:startup`
-3. Move shortcuts to the Startup folder
+3. Move the shortcut to the Startup folder
 
 ### Hotkey Conflicts
 
 Be aware of potential conflicts:
 
-- VD-move-window.ahk and VD-move-window-with-desktop.ahk have overlapping hotkeys - only run ONE of these
-- Check for conflicts with other software using similar hotkey combinations
-- Hotkeys can be modified by editing the script files
+- Do **not** run `VD-combined.ahk` (or `startup.ahk`) at the same time as the individual VD scripts it merges — they bind the same hotkeys and will fight. Exit the standalone instances first.
+- The Numpad hotkeys assume **NumLock is ON** (they bind the digit keys `Numpad1`–`Numpad9`).
+- Check for conflicts with other software using similar hotkey combinations.
+- Hotkeys can be modified by editing the script files.
 
 ---
 
@@ -351,26 +358,52 @@ Enable debugging output:
 
 | File | Type | Purpose | Dependencies |
 |------|------|---------|--------------|
-| [AppSpecificTabSwitcher.ahk](AppSpecificTabSwitcher.ahk) | Standalone | App window cycling | None |
-| [VD-move-window-with-desktop.ahk](VD-move-window-with-desktop.ahk) | Standalone | Move window + follow | VD.ahk |
-| [VD-move-window.ahk](VD-move-window.ahk) | Standalone | Move window ± follow | VD.ahk |
-| [VD-cascade.ahk](VD-cascade.ahk) | Standalone | Cascade/tile windows | VD.ahk, _WinArrange.ahk |
+| [startup.ahk](startup.ahk) | Entry point | Loads VD-combined in-process; launches future standalone scripts | VD-combined.ahk |
+| [VD-combined.ahk](VD-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin, one tray icon | VD.ahk, VD-icon.ico |
+| [VD-navigate-wraparound.ahk](VD-navigate-wraparound.ahk) | Standalone (merged into combined) | Switch desktop with wrap-around | VD.ahk |
+| [VD-move-window.ahk](VD-move-window.ahk) | Standalone (merged into combined) | Move window ± follow (arrows) | VD.ahk |
+| [VD-numpad-desktops.ahk](VD-numpad-desktops.ahk) | Standalone (merged into combined) | Absolute desktop access 1–9 (navigate/move) | VD.ahk |
+| [VD-pin-app.ahk](VD-pin-app.ahk) | Standalone (merged into combined) | Pin app/window to all desktops | VD.ahk |
+| [AppSpecificTabSwitcher.ahk](AppSpecificTabSwitcher.ahk) | Standalone (not in suite) | App window cycling | None |
+| [VD-cascade.ahk](VD-cascade.ahk) | Standalone (not in suite) | Cascade/tile windows | VD.ahk, _WinArrange.ahk |
 | [_WinArrange.ahk](_WinArrange.ahk) | Library | Windows API wrapper | None |
+| [VD-icon.ico](VD-icon.ico) / [VD-icon.svg](VD-icon.svg) | Asset | Blue tray icon for the suite | None |
 
 ---
 
 ## Hotkey Reference Table
 
+> The Desktop Navigation, Window Movement, Numpad, and Pinning hotkeys below are all provided by the consolidated [VD-combined.ahk](VD-combined.ahk).
+
+### Desktop Navigation
+
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl + Win + ←` | Switch to previous desktop (wrap-around) |
+| `Ctrl + Win + →` | Switch to next desktop (wrap-around) |
+
 ### Window Movement
 
-| Hotkey | Script | Action |
-|--------|--------|--------|
-| `Win + Ctrl + Shift + ←` | VD-move-window-with-desktop | Move window left + follow |
-| `Win + Ctrl + Shift + →` | VD-move-window-with-desktop | Move window right + follow |
-| `Ctrl + Alt + Win + ←` | VD-move-window | Move window left + follow |
-| `Ctrl + Alt + Win + →` | VD-move-window | Move window right + follow |
-| `Alt + Win + ←` | VD-move-window | Move window left (stay) |
-| `Alt + Win + →` | VD-move-window | Move window right (stay) |
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl + Alt + Win + ←/→` | Move window left/right + follow |
+| `Ctrl + Win + Shift + ←/→` | Move window left/right + follow (alias) |
+| `Alt + Win + ←/→` | Move window left/right (stay) |
+
+### Numpad (absolute desktop access, NumLock ON)
+
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl + Win + Numpad1…9` | Switch directly to desktop 1–9 |
+| `Ctrl + Alt + Win + Numpad1…9` | Move window to desktop 1–9 + follow |
+| `Alt + Win + Numpad1…9` | Move window to desktop 1–9 (stay) |
+
+### Pinning
+
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl + Win + Z` | Pin/unpin active app (all its windows) to every desktop |
+| `Ctrl + Win + X` | Pin/unpin only the active window to every desktop |
 
 ### Window Arrangement
 
