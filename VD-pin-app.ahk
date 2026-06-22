@@ -14,7 +14,7 @@ SetWinDelay -1
 SetControlDelay -1
 
 ; Include the virtual desktop helper library
-#Include ../VD.ahk/VD.ah2
+#Include lib/VD.ah2
 
 ; Hide tray utilities that expose invisible windows
 try {

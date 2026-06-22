@@ -26,7 +26,7 @@ ProcessSetPriority "H"
 SetWinDelay -1
 SetControlDelay -1
 
-#Include ../VD.ahk/VD.ah2
+#Include lib/VD.ah2
 ;#SETUP END
 
 ; ---- Config + state ---------------------------------------------------------

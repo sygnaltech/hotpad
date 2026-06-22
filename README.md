@@ -19,19 +19,7 @@ While looking to see if there was anything else useful to implement, I came acro
 Once AutoHotKey is installed, scripts can be placed anywhere on your system, and end in `.ahk` or `.ah2` for v2 scripts.  
 Double click to execute them, and they will remain running until terminated via the AHK dash or system restart. 
 
-The scripts in this library utilize FuPeiJiang's Virtual Desktop library **VD.ahk**, which is an AutoHotkey library what adds several script functions for managing virtual desktops.  You will need those scripts as well as the ones in this repo. 
-
-Both script folders must be adjacent to each other, for example;
-
-```
-C:\
-└── Scripts
-    └── Ahk
-        ├── VD.ahk
-        └── Win11AutoHotKeyFixes
-```
-
-Here both `VD.ahk` ( FuPeiJiang's library ) and `Win11AutoHotKeyFixes` ( this library ) are *folders* containing their respective scripts. 
+The scripts in this library utilize FuPeiJiang's Virtual Desktop library **VD.ahk**, which adds AutoHotkey functions for managing virtual desktops. **It is bundled with this repo** (vendored as [`lib/VD.ah2`](lib/VD.ah2)), so there is nothing extra to download — a clone or ZIP download of this repository works on its own. See [`lib/UPSTREAM.md`](lib/UPSTREAM.md) for the source, version, and how to update it.
 
 To enable the hotkeys you want, you'll enter the `Win11AutoHotKeyFixes` folder and run the AHK scripts you want;
 
@@ -46,39 +34,13 @@ These can be simply double-clicked to execute.
 
 ## Setup Process
 
-These instructions assume you have [GIT for Windows](https://git-scm.com/downloads/win) installed.  If not, you can use Github's ZIP download feature and manually setup the directories accordingly. 
+1.  Download and install [AutoHotKey v2.0](https://www.autohotkey.com/).
 
-1.  Download and install  [AutoHotKey v2.0](https://www.autohotkey.com/)
+2.  Get this repository, either way works:
+    - **Git:** `git clone https://github.com/sygnaltech/Win11AutoHotKeyFixes.git`
+    - **No git:** use GitHub's green **Code → Download ZIP** and extract it anywhere.
 
-2. Setup a directory for scripts e.g. we'll use `c:\Scripts\Ahk` here. 
-
-    a. Create the folder
-
-    b. Open the folder in a terminal window.
-    To do this you can navigate to the folder in Explorer, then right click in the file pane and choose **Open in Terminal** which will launch PowerShell in that folder. 
-
-2.  Clone FuPeiJiang's Virtual Desktop library [VD.ahk](https://github.com/FuPeiJiang/VD.ahk) from Github. 
-You need the [v2_port branch](https://github.com/FuPeiJiang/VD.ahk/tree/v2_port) specifically. 
-
-```
-git clone --branch v2_port https://github.com/FuPeiJiang/VD.ahk.git
-```
-
-3. Clone this repository. 
-
-```
-git clone https://github.com/phazei/Win11AutoHotKeyFixes.git
-```
-
-4. Verify your setup.  Your Scripts folder should now contain two subfolders named `VD.ahk` and `Win11AutoHotKeyFixes`, like this; 
-
-```
-C:\
-└── Scripts
-    └── Ahk
-        ├── VD.ahk
-        └── Win11AutoHotKeyFixes
-```
+That's it — the VD.ahk library is already bundled in `lib/`, so there is no separate dependency to clone.
 
 ## Running the Script
 
@@ -91,11 +53,11 @@ Navigate to the `Win11AutoHotKeyFixes` and double-click the scripts you want to 
 
 ### Troubleshooting 
 
-If you get any errors when you run the script, the most likely causes are;
+If you get any errors when you run the script, the most likely cause is;
 
 - You have downloaded AHK v1 accidentally instead of v2 
-- Your two folders are not adjacent in the same dir, or you've renamed `VD.ahk` to something else 
-- You've accidentally cloned the `main` branch of **VD.ahk** rather than the `v2_port` branch 
+
+(The VD.ahk library is bundled in `lib/`, so the old "two adjacent folders / wrong branch" problems no longer apply.)
 
 ### Automatically Installing these at Windows Startup 
 
@@ -145,4 +107,17 @@ Functionality is divided into 4 scripts-
 ## Other 
 
 If someone has a better suggestion for the cascading windows shortcuts, feel free to suggest it and any other ideas you might have.
+
+## Credits & Third-Party
+
+This project bundles, unmodified, the **VD.ahk** virtual-desktop library:
+
+- **VD.ahk** by Fu Pei Jiang ([@FuPeiJiang](https://github.com/FuPeiJiang)) — https://github.com/FuPeiJiang/VD.ahk — MIT License.
+  Vendored as [`lib/VD.ah2`](lib/VD.ah2); see [`lib/UPSTREAM.md`](lib/UPSTREAM.md) for the pinned version and [`lib/VD.ahk-LICENSE`](lib/VD.ahk-LICENSE) for its license.
+
+This repository is MIT licensed (see [LICENSE](LICENSE)). The bundled VD.ahk library remains under its own MIT license held by its author.
+
+## License
+
+[MIT](LICENSE)
 

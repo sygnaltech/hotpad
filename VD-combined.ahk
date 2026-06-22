@@ -37,7 +37,7 @@ SetWinDelay -1
 SetControlDelay -1
 
 ; Include the virtual desktop helper library (exactly once).
-#Include ../VD.ahk/VD.ah2
+#Include lib/VD.ah2
 
 ; You should WinHide invisible programs that have a window.
 try {
