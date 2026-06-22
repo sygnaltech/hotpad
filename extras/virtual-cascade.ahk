@@ -17,9 +17,9 @@ SetWinDelay -1
 SetControlDelay -1
 
 ; Include the library
-#Include lib/VD.ah2
+#Include ../lib/VD.ah2
 ; VD.init() ; COMMENT OUT `static dummyStatic1 := VD.init()` if you don't want to init at start of script
-#Include ./_WinArrange.ahk
+#Include ./_winarrange.ahk
 
 
 ; You should WinHide invisible programs that have a window.

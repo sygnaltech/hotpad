@@ -1,5 +1,5 @@
 ; =============================================================================
-; VD-grid.ahk
+; virtual-grid.ahk
 ; A numpad-layout 3x3 HUD of virtual desktops 1-9, shown while Ctrl+Win is held.
 ; Highlights the current desktop and shows each desktop's (native Windows) name.
 ; Navigation itself stays on the existing Ctrl+Win+Numpad hotkeys.
@@ -12,7 +12,7 @@
 ;   Ctrl+Win+NumpadDot  -> rename the current desktop (uses native Win11 names,
 ;                          which persist and also appear in Task View)
 ;
-; Standalone for now (run it alongside the rest); can be folded into VD-combined later.
+; Standalone for now (run it alongside the rest); can be folded into virtual-combined later.
 ; =============================================================================
 
 ;#SETUP START
@@ -26,7 +26,7 @@ ProcessSetPriority "H"
 SetWinDelay -1
 SetControlDelay -1
 
-#Include lib/VD.ah2
+#Include ../lib/VD.ah2
 ;#SETUP END
 
 ; ---- Config + state ---------------------------------------------------------

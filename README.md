@@ -21,14 +21,27 @@ Double click to execute them, and they will remain running until terminated via 
 
 The scripts in this library utilize FuPeiJiang's Virtual Desktop library **VD.ahk**, which adds AutoHotkey functions for managing virtual desktops. **It is bundled with this repo** (vendored as [`lib/VD.ah2`](lib/VD.ah2)), so there is nothing extra to download — a clone or ZIP download of this repository works on its own. See [`lib/UPSTREAM.md`](lib/UPSTREAM.md) for the source, version, and how to update it.
 
-The virtual-desktop features are bundled into a single script, **`VD-combined.ahk`**, launched by **`startup.ahk`** — so everything runs as **one process / one tray icon** ("Virtual Desktop Suite"). You just run `startup.ahk`.
+The virtual-desktop features are bundled into a single script, **`virtual-combined.ahk`**, launched by **`startup.ahk`** — so everything runs as **one process / one tray icon** ("Virtual Desktop Suite"). You just run `startup.ahk`.
 
-Two extra features live in their own standalone scripts (run them separately if you want them):
+Two extra features live in their own standalone scripts under `extras/` (run them separately if you want them):
 
-- `VD-cascade.ahk` — cascade / tile windows
-- `AppSpecificTabSwitcher.ahk` — macOS-style ⌘-` app-window cycling
+- `extras/virtual-cascade.ahk` — cascade / tile windows
+- `extras/app-specific-tab-switcher.ahk` — macOS-style ⌘-` app-window cycling
 
 *The full hotkey list, and how to auto-start with Windows, are below.*
+
+### Repository layout
+
+```
+virtual-combined.ahk    the whole suite (one tray icon)
+startup.ahk             entry point — run this; it loads virtual-combined
+virtual-icon.*          tray icon
+assets/                 keypad key icons
+lib/                    bundled VD.ahk dependency (see lib/UPSTREAM.md)
+reference/              the individual scripts that were folded into the suite
+extras/                 standalone scripts not part of the suite (cascade, app switcher)
+legacy/                 older / niche / personal scripts and notes, kept for reference
+```
 
 ## Setup Process
 
@@ -46,8 +59,8 @@ Double-click **`startup.ahk`**. That loads the whole virtual-desktop suite into 
 
 Optionally, also double-click the standalone extras if you want them:
 
-- `VD-cascade.ahk` — cascade / tile windows
-- `AppSpecificTabSwitcher.ahk` — app-window cycling
+- `extras/virtual-cascade.ahk` — cascade / tile windows
+- `extras/app-specific-tab-switcher.ahk` — app-window cycling
 
 ### Troubleshooting 
 
@@ -59,7 +72,7 @@ If you get any errors when you run the script, the most likely cause is;
 
 ### Automatically Installing these at Windows Startup 
 
-1. Create a shortcut to **`startup.ahk`** (and to any standalone extras you use, e.g. `VD-cascade.ahk`). 
+1. Create a shortcut to **`startup.ahk`** (and to any standalone extras you use, e.g. `virtual-cascade.ahk`). 
 
 2. Press `Win+R` and type `shell:startup` to see your Windows startup folder. 
 
@@ -70,7 +83,7 @@ If you get any errors when you run the script, the most likely cause is;
 
 ## Usage
 
-These hotkeys come from the **suite** (`startup.ahk` → `VD-combined.ahk`). The numpad hotkeys assume **NumLock is ON** (they use the digit keys `Numpad0`–`Numpad9`, where `Numpad0` = desktop 10).
+These hotkeys come from the **suite** (`startup.ahk` → `virtual-combined.ahk`). The numpad hotkeys assume **NumLock is ON** (they use the digit keys `Numpad0`–`Numpad9`, where `Numpad0` = desktop 10).
 
 ### Navigating desktops
 
@@ -99,14 +112,14 @@ These hotkeys come from the **suite** (`startup.ahk` → `VD-combined.ahk`). The
 
 The following come from the **standalone extras** (run their script separately):
 
-### Cascading / tiling windows — `VD-cascade.ahk`
+### Cascading / tiling windows — `extras/virtual-cascade.ahk`
 
  - `Win + Alt + C`:  Cascade all windows on the desktop
  - `Win + Alt + H`:  Tile all windows horizontally
  - `Win + Alt + V`:  Tile all windows vertically
  - Add `+ Shift` to any of the above: only cascade/tile windows of the same executable (e.g. all Chrome windows)
 
-### App-specific switcher (macOS ⌘-`) — `AppSpecificTabSwitcher.ahk`
+### App-specific switcher (macOS ⌘-`) — `extras/app-specific-tab-switcher.ahk`
 
  - ``Alt + ` ``:  Switch to the most recent non-focused window of the same app
  - ``Alt + Shift + ` ``:  Switch to the oldest non-focused window of the same app

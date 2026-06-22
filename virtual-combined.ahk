@@ -1,12 +1,12 @@
 ; =============================================================================
-; VD-combined.ahk
+; virtual-combined.ahk
 ; Consolidated virtual-desktop suite - runs as ONE process / ONE tray icon.
 ;
 ; Merged from (originals kept in repo, but no longer launched individually):
-;   - VD-navigate-wraparound.ahk
-;   - VD-move-window.ahk
-;   - VD-numpad-desktops.ahk
-;   - VD-pin-app.ahk
+;   - virtual-navigate-wraparound.ahk
+;   - virtual-move-window.ahk
+;   - virtual-numpad-desktops.ahk
+;   - virtual-pin-app.ahk
 ;
 ; Hotkeys ( ^ = Ctrl   ! = Alt   # = Win   + = Shift ):
 ;   Navigate (wrap-around):   Ctrl+Win+Left/Right
@@ -49,7 +49,7 @@ try {
 ; ---- Preview-grid config + state --------------------------------------------
 ; Held in a class so it's reliably accessible from every function. Defined before
 ; the auto-execute body so its static init isn't flagged as unreachable.
-class VDGrid {
+class VirtualGrid {
     ; Keypad geometry (px) - tweak here.
     static Pad  := 18           ; outer padding
     static Cell := 80           ; key size
@@ -78,8 +78,8 @@ class VDGrid {
 ; ---- Init (auto-execute section) -------------------------------------------
 ; Distinct tray icon + tooltip so the single combined process is identifiable.
 ; A_ScriptDir is the entry script's dir (works whether run directly or #Included
-; from startup.ahk, since both live alongside VD-icon.ico).
-TraySetIcon A_ScriptDir "\VD-icon.ico"
+; from startup.ahk, since both live alongside virtual-icon.ico).
+TraySetIcon A_ScriptDir "\virtual-icon.ico"
 A_IconTip := "Virtual Desktop Suite"
 
 VD.createUntil(3) ; Create until we have at least 3 virtual desktops
@@ -89,7 +89,7 @@ DllCall("LoadLibrary", "Str", "gdiplus")
 gdipSi := Buffer(A_PtrSize = 8 ? 24 : 16, 0)
 NumPut("UInt", 1, gdipSi, 0)
 DllCall("gdiplus\GdiplusStartup", "Ptr*", &gdipTok := 0, "Ptr", gdipSi, "Ptr", 0)
-VDGrid.GdipToken := gdipTok
+VirtualGrid.GdipToken := gdipTok
 
 ; Load persisted settings, and add a "Settings" entry to the tray right-click menu.
 LoadConfig()
@@ -290,7 +290,7 @@ ChordHeld() {
 }
 
 CheckChord() {
-    if VDGrid.Naming
+    if VirtualGrid.Naming
         return
     if ChordHeld()
         ShowOrUpdateGrid()
@@ -300,7 +300,7 @@ CheckChord() {
 
 RenameCurrentDesktop() {
     n := VD.getCurrentDesktopNum()
-    VDGrid.Naming := true
+    VirtualGrid.Naming := true
     HideGrid() ; get the HUD out of the way of the dialog
     ShowRenameDialog(n, DesktopName(n))
 }
@@ -328,7 +328,7 @@ ShowRenameDialog(n, currentName) {
 
 RenameFinish(dlg, value, n, cancelled) {
     dlg.Destroy()
-    VDGrid.Naming := false
+    VirtualGrid.Naming := false
     ; Next time the keypad shows it rebuilds (HideGrid reset ShownFor), so a new name appears.
     if (!cancelled)
         VD.setNameToDesktopNum(value, n)
@@ -349,39 +349,39 @@ ShowOrUpdateGrid() {
     current := VD.getCurrentDesktopNum()
 
     ; Already showing and highlight is current -> nothing to do.
-    if (VDGrid.Hud && VDGrid.ShownFor = current)
+    if (VirtualGrid.Hud && VirtualGrid.ShownFor = current)
         return
 
-    s := VDGrid.Scale
-    pad := Round(VDGrid.Pad * s), cell := Round(VDGrid.Cell * s), gap := Round(VDGrid.Gap * s)
+    s := VirtualGrid.Scale
+    pad := Round(VirtualGrid.Pad * s), cell := Round(VirtualGrid.Cell * s), gap := Round(VirtualGrid.Gap * s)
     kpW := pad*2 + 4*cell + 3*gap
     kpH := pad*2 + 5*cell + 4*gap
 
     pBmp := RenderKeypad(current, pad, cell, gap, s, kpW, kpH)
 
     ; Create the layered, no-activate, always-on-top window once; reuse it after.
-    if !VDGrid.Hud {
+    if !VirtualGrid.Hud {
         g := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x80000 +E0x08000000") ; 0x80000=WS_EX_LAYERED, 0x08000000=WS_EX_NOACTIVATE
         g.Show("NoActivate Hide")
-        VDGrid.Hud := g
+        VirtualGrid.Hud := g
     }
 
     MonitorGet(MonitorGetPrimary(), &mLeft, &mTop, &mRight, &mBottom)
     px := mLeft + ((mRight - mLeft) - kpW) // 2
     py := mTop + ((mBottom - mTop) - kpH) // 2
 
-    KpBlitLayered(VDGrid.Hud.Hwnd, pBmp, px, py, kpW, kpH)
-    DllCall("ShowWindow", "Ptr", VDGrid.Hud.Hwnd, "Int", 8) ; SW_SHOWNA = show without activating
+    KpBlitLayered(VirtualGrid.Hud.Hwnd, pBmp, px, py, kpW, kpH)
+    DllCall("ShowWindow", "Ptr", VirtualGrid.Hud.Hwnd, "Int", 8) ; SW_SHOWNA = show without activating
     DllCall("gdiplus\GdipDisposeImage", "Ptr", pBmp)
 
-    VDGrid.ShownFor := current
+    VirtualGrid.ShownFor := current
 }
 
 HideGrid() {
-    if !VDGrid.Hud
+    if !VirtualGrid.Hud
         return
-    DllCall("ShowWindow", "Ptr", VDGrid.Hud.Hwnd, "Int", 0) ; SW_HIDE
-    VDGrid.ShownFor := -1
+    DllCall("ShowWindow", "Ptr", VirtualGrid.Hud.Hwnd, "Int", 0) ; SW_HIDE
+    VirtualGrid.ShownFor := -1
 }
 
 ; ---- Keypad rendering (GDI+) ------------------------------------------------
@@ -419,7 +419,7 @@ RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
     DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", G, "Int", 4)
     DllCall("gdiplus\GdipSetInterpolationMode", "Ptr", G, "Int", 7)
 
-    KpFill(G, 0, 0, kpW, kpH, 22*s, VDGrid.ColBody)
+    KpFill(G, 0, 0, kpW, kpH, 22*s, VirtualGrid.ColBody)
 
     for kd in KpLayout() {
         cs := kd.HasOwnProp("cs") ? kd.cs : 1
@@ -430,20 +430,20 @@ RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
         kh := cell + (rs - 1) * (cell + gap)
 
         isCur := (kd.k = "digit" && kd.d = current)
-        KpFill(G, kx, ky, kw, kh, 10*s, isCur ? VDGrid.ColCur : VDGrid.ColBody)
-        KpStroke(G, kx, ky, kw, kh, 10*s, isCur ? VDGrid.ColCurStrk : VDGrid.ColStroke, 1.5*s)
+        KpFill(G, kx, ky, kw, kh, 10*s, isCur ? VirtualGrid.ColCur : VirtualGrid.ColBody)
+        KpStroke(G, kx, ky, kw, kh, 10*s, isCur ? VirtualGrid.ColCurStrk : VirtualGrid.ColStroke, 1.5*s)
 
         if (kd.k = "digit") {
             nm := (kd.d <= count) ? DesktopName(kd.d) : ""
-            txtCol := isCur ? VDGrid.ColCurTxt : VDGrid.ColTxt
+            txtCol := isCur ? VirtualGrid.ColCurTxt : VirtualGrid.ColTxt
             lbl := kd.HasOwnProp("lbl") ? kd.lbl : kd.d
             ; Number always sits in the upper area, name slot reserved below.
             KpText(G, lbl, kx, ky + 6*s, kw, kh - 30*s, 30*s, txtCol, true)
             if (nm != "")
-                KpText(G, nm, kx, ky + kh - 30*s, kw, 24*s, 12*s, isCur ? VDGrid.ColCurName : VDGrid.ColName)
+                KpText(G, nm, kx, ky + kh - 30*s, kw, 24*s, 12*s, isCur ? VirtualGrid.ColCurName : VirtualGrid.ColName)
         } else if (kd.k = "glyph" || kd.k = "text") {
             sz := kd.HasOwnProp("sz") ? kd.sz : 30
-            KpText(G, kd.t, kx, ky, kw, kh, sz*s, VDGrid.ColTxt, kd.k != "text")
+            KpText(G, kd.t, kx, ky, kw, kh, sz*s, VirtualGrid.ColTxt, kd.k != "text")
         } else if (kd.k = "icon") {
             isz := Round(40 * s)
             KpIcon(G, A_ScriptDir "\" kd.ic, kx + (kw - isz)//2, ky + (kh - isz)//2, isz, isz)
@@ -536,7 +536,7 @@ KpBlitLayered(hwnd, pBmp, x, y, w, h) {
 ConfigFile() => A_AppData "\VirtualDesktopSuite\settings.ini"
 
 LoadConfig() {
-    VDGrid.Scale := IniRead(ConfigFile(), "Keypad", "Scale", "1.0") + 0 ; +0 -> number
+    VirtualGrid.Scale := IniRead(ConfigFile(), "Keypad", "Scale", "1.0") + 0 ; +0 -> number
 }
 
 SaveScale(scale) {
@@ -544,8 +544,8 @@ SaveScale(scale) {
     if !DirExist(dir)
         DirCreate(dir)
     IniWrite(scale, ConfigFile(), "Keypad", "Scale")
-    VDGrid.Scale := scale
-    VDGrid.ShownFor := -1 ; force a re-render at the new scale next time the keypad shows
+    VirtualGrid.Scale := scale
+    VirtualGrid.ShownFor := -1 ; force a re-render at the new scale next time the keypad shows
 }
 
 ; Tray > Settings window. Dark, matches the keypad/rename styling.
@@ -556,9 +556,9 @@ ShowSettings(*) {
     sg.SetFont("s10 Bold", "Segoe UI")
     sg.AddText("cD6D6D6", "Keypad size")
     sg.SetFont("s10 Norm", "Segoe UI")
-    rS := sg.AddRadio("xm y+10 cE0E0E0" (VDGrid.Scale < 1.25 ? " Checked" : ""), "Small  (100%)")
-    rM := sg.AddRadio("xm y+6 cE0E0E0" (VDGrid.Scale >= 1.25 && VDGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
-    rL := sg.AddRadio("xm y+6 cE0E0E0" (VDGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
+    rS := sg.AddRadio("xm y+10 cE0E0E0" (VirtualGrid.Scale < 1.25 ? " Checked" : ""), "Small  (100%)")
+    rM := sg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.25 && VirtualGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
+    rL := sg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
     sg.SetFont("s9")
     save := sg.AddButton("xm y+18 w95 Default", "Save")
     cancel := sg.AddButton("x+10 w95", "Cancel")

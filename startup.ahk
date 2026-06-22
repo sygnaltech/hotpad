@@ -21,7 +21,7 @@ for script in scripts {
 ; Load the consolidated virtual-desktop suite in-process (single tray icon).
 ; Must be included here, inside the auto-execute section (before any `return`),
 ; so its runtime-registered Numpad hotkeys actually bind.
-#Include VD-combined.ahk
+#Include virtual-combined.ahk
 
 LaunchScript(scriptName) {
     scriptPath := A_ScriptDir "\" scriptName

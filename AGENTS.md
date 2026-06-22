@@ -10,21 +10,36 @@ All scripts are written in AutoHotKey v2.0 and depend on the [VD.ahk](https://gi
 
 ### Current layout (consolidated)
 
-The virtual-desktop functionality is now consolidated into a **single** script, [VD-combined.ahk](VD-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `VD-icon.ico`, with the tray tooltip "Virtual Desktop Suite").
+The virtual-desktop functionality is now consolidated into a **single** script, [virtual-combined.ahk](virtual-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `virtual-icon.ico`, with the tray tooltip "Virtual Desktop Suite").
 
-- **[startup.ahk](startup.ahk)** is the entry point. It `#Include`s `VD-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
-- **[VD-combined.ahk](VD-combined.ahk)** merges what used to be five separate scripts: `VD-navigate-wraparound.ahk`, `VD-move-window.ahk`, `VD-numpad-desktops.ahk`, `VD-pin-app.ahk`, and `VD-grid.ahk` (the preview HUD + desktop rename). It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
-- The original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `VD-move-window-with-desktop.ahk` was merged into `VD-move-window.ahk` and removed.
+- **[startup.ahk](startup.ahk)** is the entry point. It `#Include`s `virtual-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
+- **[virtual-combined.ahk](virtual-combined.ahk)** merges what used to be five separate scripts: `virtual-navigate-wraparound.ahk`, `virtual-move-window.ahk`, `virtual-numpad-desktops.ahk`, `virtual-pin-app.ahk`, and `virtual-grid.ahk` (the preview HUD + desktop rename). It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
+- The original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `virtual-move-window-with-desktop.ahk` was merged into `virtual-move-window.ahk` and removed.
 
-#### Preview keypad + desktop rename + settings (in VD-combined.ahk)
+Directory layout:
 
-These features live only in the consolidated script (their original was `VD-grid.ahk`):
+```
+virtual-combined.ahk    the whole suite (one tray icon)
+startup.ahk             entry point — loads virtual-combined
+virtual-icon.*          tray icon
+assets/keys/            keypad key icons (PNG + SVG source)
+lib/                    bundled VD.ahk dependency (vendored; see lib/UPSTREAM.md)
+reference/              the individual scripts folded into the suite (kept for reference)
+extras/                 standalone scripts not part of the suite (cascade + _winarrange, app switcher)
+legacy/                 older / niche / personal scripts and notes
+```
 
-- **Preview keypad** — holding `Ctrl+Win` shows a full numeric-keypad HUD rendered with **GDI+** onto a **layered window** (`UpdateLayeredWindow`, `WS_EX_LAYERED | WS_EX_NOACTIVATE`), centered on the **primary** monitor. Layout matches a real numpad: `= / * BS` / `7 8 9 −` / `4 5 6 +` / `1 2 3 Enter` / `0 .`, so `1`–`9` map to desktops 1–9 (1 = bottom-left, 9 = top-right) and the `0` key is **desktop 10** (labelled "0"). The current desktop's key is filled blue; each desktop's name is drawn beneath its number (number position is fixed whether or not a name exists). The `= / * BS − + Enter` keys are inert placeholders for future assignment; the backspace key uses a bundled icon (`assets/keys/bs.png`, rasterized from `bs.svg`). Driven by a lightweight `SetTimer CheckChord, 75` poll; a `class VDGrid` holds geometry, ARGB colors, the `Scale` setting, and runtime state. Renderer entry point is `RenderKeypad()` (+ `Kp*` helpers); redraws only on desktop change. Purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
+Note: scripts in `reference/` and `extras/` reach the library via `../lib/VD.ah2` (one level up); the root suite uses `lib/VD.ah2`.
+
+#### Preview keypad + desktop rename + settings (in virtual-combined.ahk)
+
+These features live only in the consolidated script (their original was `virtual-grid.ahk`):
+
+- **Preview keypad** — holding `Ctrl+Win` shows a full numeric-keypad HUD rendered with **GDI+** onto a **layered window** (`UpdateLayeredWindow`, `WS_EX_LAYERED | WS_EX_NOACTIVATE`), centered on the **primary** monitor. Layout matches a real numpad: `= / * BS` / `7 8 9 −` / `4 5 6 +` / `1 2 3 Enter` / `0 .`, so `1`–`9` map to desktops 1–9 (1 = bottom-left, 9 = top-right) and the `0` key is **desktop 10** (labelled "0"). The current desktop's key is filled blue; each desktop's name is drawn beneath its number (number position is fixed whether or not a name exists). The `= / * BS − + Enter` keys are inert placeholders for future assignment; the backspace key uses a bundled icon (`assets/keys/bs.png`, rasterized from `bs.svg`). Driven by a lightweight `SetTimer CheckChord, 75` poll; a `class VirtualGrid` holds geometry, ARGB colors, the `Scale` setting, and runtime state. Renderer entry point is `RenderKeypad()` (+ `Kp*` helpers); redraws only on desktop change. Purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
 - **Desktop rename** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off) opens a dark, keypad-styled dialog (`ShowRenameDialog`) to name the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and also appear in Task View.
-- **Settings (persisted)** — the tray right-click menu has a **Settings** entry (`ShowSettings`) to pick the keypad size **Small (100%) / Medium (150%) / Large (200%)**. The choice is saved to `%APPDATA%\VirtualDesktopSuite\settings.ini` (`[Keypad] Scale=…`) via `LoadConfig` / `SaveScale`, loaded at startup, and applied immediately (the whole keypad — keys, fonts, icon, radii — scales by `VDGrid.Scale`). This is the per-machine config store, kept out of the repo so it survives updates.
+- **Settings (persisted)** — the tray right-click menu has a **Settings** entry (`ShowSettings`) to pick the keypad size **Small (100%) / Medium (150%) / Large (200%)**. The choice is saved to `%APPDATA%\VirtualDesktopSuite\settings.ini` (`[Keypad] Scale=…`) via `LoadConfig` / `SaveScale`, loaded at startup, and applied immediately (the whole keypad — keys, fonts, icon, radii — scales by `VirtualGrid.Scale`). This is the per-machine config store, kept out of the repo so it survives updates.
 
-The per-script sections below document the original scripts; their logic is what `VD-combined.ahk` consolidates.
+The per-script sections below document the original scripts; their logic is what `virtual-combined.ahk` consolidates.
 
 ### Common Setup Pattern
 
@@ -44,7 +59,7 @@ SetControlDelay -1              ; No delay between control operations
 
 ## Scripts
 
-### 1. AppSpecificTabSwitcher.ahk
+### 1. app-specific-tab-switcher.ahk
 
 **Purpose:** Replicates macOS Command+` functionality to switch between windows of the same application.
 
@@ -84,9 +99,9 @@ Returns an array of window handles for a given process, filtering:
 
 ---
 
-### 2. VD-move-window-with-desktop.ahk  *(merged & removed)*
+### 2. virtual-move-window-with-desktop.ahk  *(merged & removed)*
 
-> **Note:** This script no longer exists. Its move-and-follow behavior was merged into [VD-move-window.ahk](VD-move-window.ahk) (and now [VD-combined.ahk](VD-combined.ahk)) as a normalized follow path, with `Win + Ctrl + Shift + Left/Right` retained as an alias for the `Ctrl + Alt + Win + Left/Right` follow hotkeys. The description below is kept for historical context.
+> **Note:** This script no longer exists. Its move-and-follow behavior was merged into [virtual-move-window.ahk](virtual-move-window.ahk) (and now [virtual-combined.ahk](virtual-combined.ahk)) as a normalized follow path, with `Win + Ctrl + Shift + Left/Right` retained as an alias for the `Ctrl + Alt + Win + Left/Right` follow hotkeys. The description below is kept for historical context.
 
 **Purpose:** Move the active window to adjacent virtual desktop and follow it.
 
@@ -116,7 +131,7 @@ Lines: 31-53
 
 ---
 
-### 3. VD-move-window.ahk
+### 3. virtual-move-window.ahk
 
 **Purpose:** Move the active window to adjacent virtual desktop WITHOUT following it.
 
@@ -126,7 +141,7 @@ Lines: 31-53
 - `Alt + Win + Right`: Move window to next desktop (stay on current)
 - `Alt + Win + Left`: Move window to previous desktop (stay on current)
 
-**Key Difference from VD-move-window-with-desktop.ahk:**
+**Key Difference from virtual-move-window-with-desktop.ahk:**
 
 This script provides TWO modes of operation:
 1. **With Follow** (`Ctrl+Alt+Win+Arrow`): Switches desktop after moving window
@@ -136,7 +151,7 @@ Lines 76-78 and 91-93 have commented-out `VD.goToDesktopNum()` and `WinActivate(
 
 ---
 
-### 4. VD-cascade.ahk
+### 4. virtual-cascade.ahk
 
 **Purpose:** Cascade, tile horizontally, or tile vertically all windows on the current virtual desktop.
 
@@ -158,7 +173,7 @@ Utility hotkeys:
 
 **Dependencies:**
 - VD.ahk library
-- [_WinArrange.ahk](_WinArrange.ahk) (local utility library)
+- [_winarrange.ahk](_winarrange.ahk) (local utility library)
 
 **Configuration Constants:**
 Lines: 31-37
@@ -212,11 +227,11 @@ Moves windows to front in reverse order to maintain their relative positions.
 
 ---
 
-### 5. _WinArrange.ahk
+### 5. _winarrange.ahk
 
 **Purpose:** Low-level wrapper for Windows DLL functions that perform window arrangement.
 
-**This is a utility library**, not a standalone script. It provides the core window arrangement functionality used by [VD-cascade.ahk](#4-vd-cascadeahk).
+**This is a utility library**, not a standalone script. It provides the core window arrangement functionality used by [virtual-cascade.ahk](extras/virtual-cascade.ahk).
 
 **Key Function:**
 
@@ -291,7 +306,7 @@ All scripts use these optimizations:
 
 ### Memory Management
 
-The `_WinArrange.ahk` library manually manages memory buffers to interface with C-style Windows API:
+The `_winarrange.ahk` library manually manages memory buffers to interface with C-style Windows API:
 
 ```ahk
 buf := Buffer(totalSize)           ; Allocate memory
@@ -307,9 +322,9 @@ This is necessary because AutoHotKey arrays cannot be directly passed to DLL fun
 
 ### Recommended setup
 
-Run **[startup.ahk](startup.ahk)** — it loads the consolidated [VD-combined.ahk](VD-combined.ahk) suite in-process (one tray icon) covering navigation, window moving (relative + numpad-absolute), and pinning. No need to launch the individual VD scripts.
+Run **[startup.ahk](startup.ahk)** — it loads the consolidated [virtual-combined.ahk](virtual-combined.ahk) suite in-process (one tray icon) covering navigation, window moving (relative + numpad-absolute), and pinning. No need to launch the individual VD scripts.
 
-[VD-cascade.ahk](VD-cascade.ahk) (window tiling/cascading) and [AppSpecificTabSwitcher.ahk](AppSpecificTabSwitcher.ahk) (app window cycling) are **not** part of the consolidated suite or startup; run them separately if you want them.
+[virtual-cascade.ahk](virtual-cascade.ahk) (window tiling/cascading) and [app-specific-tab-switcher.ahk](app-specific-tab-switcher.ahk) (app window cycling) are **not** part of the consolidated suite or startup; run them separately if you want them.
 
 ### Startup Configuration
 
@@ -323,7 +338,7 @@ To auto-start with Windows:
 
 Be aware of potential conflicts:
 
-- Do **not** run `VD-combined.ahk` (or `startup.ahk`) at the same time as the individual VD scripts it merges — they bind the same hotkeys and will fight. Exit the standalone instances first.
+- Do **not** run `virtual-combined.ahk` (or `startup.ahk`) at the same time as the individual VD scripts it merges — they bind the same hotkeys and will fight. Exit the standalone instances first.
 - The Numpad hotkeys assume **NumLock is ON** (they bind the digit keys `Numpad1`–`Numpad9`).
 - Check for conflicts with other software using similar hotkey combinations.
 - Hotkeys can be modified by editing the script files.
@@ -341,11 +356,11 @@ Be aware of potential conflicts:
 
 ### Known Limitations
 
-1. **AppSpecificTabSwitcher.ahk**:
+1. **app-specific-tab-switcher.ahk**:
    - Cannot detect window focus changes without events
    - Order tracking can become inconsistent if user clicks windows randomly
 
-2. **VD-cascade.ahk**:
+2. **virtual-cascade.ahk**:
    - Sometimes windows need to be brought to front manually after arranging by process
    - Margin setting `CA_MARGIN` is hardcoded (can be edited)
 
@@ -366,17 +381,18 @@ Enable debugging output:
 
 | File | Type | Purpose | Dependencies |
 |------|------|---------|--------------|
-| [startup.ahk](startup.ahk) | Entry point | Loads VD-combined in-process; launches future standalone scripts | VD-combined.ahk |
-| [VD-combined.ahk](VD-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview keypad + rename + settings, one tray icon | VD.ahk, VD-icon.ico, assets/keys/, gdiplus |
-| [VD-navigate-wraparound.ahk](VD-navigate-wraparound.ahk) | Standalone (merged into combined) | Switch desktop with wrap-around | VD.ahk |
-| [VD-move-window.ahk](VD-move-window.ahk) | Standalone (merged into combined) | Move window ± follow (arrows) | VD.ahk |
-| [VD-numpad-desktops.ahk](VD-numpad-desktops.ahk) | Standalone (merged into combined) | Absolute desktop access 1–9 (navigate/move) | VD.ahk |
-| [VD-pin-app.ahk](VD-pin-app.ahk) | Standalone (merged into combined) | Pin app/window to all desktops | VD.ahk |
-| [VD-grid.ahk](VD-grid.ahk) | Standalone (merged into combined) | Ctrl+Win preview HUD + desktop rename | VD.ahk |
-| [AppSpecificTabSwitcher.ahk](AppSpecificTabSwitcher.ahk) | Standalone (not in suite) | App window cycling | None |
-| [VD-cascade.ahk](VD-cascade.ahk) | Standalone (not in suite) | Cascade/tile windows | VD.ahk, _WinArrange.ahk |
-| [_WinArrange.ahk](_WinArrange.ahk) | Library | Windows API wrapper | None |
-| [VD-icon.ico](VD-icon.ico) / [VD-icon.svg](VD-icon.svg) | Asset | Blue tray icon for the suite | None |
+| [startup.ahk](startup.ahk) | Entry point | Loads virtual-combined in-process; launches future standalone scripts | virtual-combined.ahk |
+| [virtual-combined.ahk](virtual-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview keypad + rename + settings, one tray icon | VD.ahk, virtual-icon.ico, assets/keys/, gdiplus |
+| [reference/virtual-navigate-wraparound.ahk](reference/virtual-navigate-wraparound.ahk) | reference/ (merged into combined) | Switch desktop with wrap-around | VD.ahk |
+| [reference/virtual-move-window.ahk](reference/virtual-move-window.ahk) | reference/ (merged into combined) | Move window ± follow (arrows) | VD.ahk |
+| [reference/virtual-numpad-desktops.ahk](reference/virtual-numpad-desktops.ahk) | reference/ (merged into combined) | Absolute desktop access 1–9 (navigate/move) | VD.ahk |
+| [reference/virtual-pin-app.ahk](reference/virtual-pin-app.ahk) | reference/ (merged into combined) | Pin app/window to all desktops | VD.ahk |
+| [reference/virtual-grid.ahk](reference/virtual-grid.ahk) | reference/ (merged into combined) | Ctrl+Win preview HUD + desktop rename | VD.ahk |
+| [extras/virtual-cascade.ahk](extras/virtual-cascade.ahk) | extras/ (not in suite) | Cascade/tile windows | VD.ahk, _winarrange.ahk |
+| [extras/_winarrange.ahk](extras/_winarrange.ahk) | extras/ library | Windows API wrapper | None |
+| [extras/app-specific-tab-switcher.ahk](extras/app-specific-tab-switcher.ahk) | extras/ (not in suite) | App window cycling | None |
+| [legacy/](legacy/) | legacy/ | Older/niche/personal scripts + notes (chrome-tab-search, key-detector, emoji-key, etc.) | — |
+| [virtual-icon.ico](virtual-icon.ico) / [virtual-icon.svg](virtual-icon.svg) | Asset | Blue tray icon for the suite | None |
 | [assets/keys/bs.png](assets/keys/bs.png) / `bs.svg` | Asset | Backspace key icon for the preview keypad | None |
 | `%APPDATA%\VirtualDesktopSuite\settings.ini` | Config (per-machine, not in repo) | Persisted settings, e.g. `[Keypad] Scale` | None |
 
@@ -384,7 +400,7 @@ Enable debugging output:
 
 ## Hotkey Reference Table
 
-> The Desktop Navigation, Window Movement, Numpad, Pinning, Preview keypad, Rename, and Settings entries below are all provided by the consolidated [VD-combined.ahk](VD-combined.ahk).
+> The Desktop Navigation, Window Movement, Numpad, Pinning, Preview keypad, Rename, and Settings entries below are all provided by the consolidated [virtual-combined.ahk](virtual-combined.ahk).
 
 ### Desktop Navigation
 
@@ -510,9 +526,9 @@ When modifying these scripts:
 
 ## Credits
 
-- **VD-move-window scripts**: Based on [StackOverflow answer by multiple contributors](https://superuser.com/questions/1685845/moving-current-window-to-another-desktop-in-windows-11-using-shortcut-keys)
-- **_WinArrange.ahk**: Based on [ancient AutoHotKey forum post](https://www.autohotkey.com/board/topic/80580-how-to-programmatically-tile-cascade-windows/), updated for AHK v2 and Win11
-- **AppSpecificTabSwitcher.ahk**: Original implementation inspired by macOS Command+` functionality
+- **virtual-move-window scripts**: Based on [StackOverflow answer by multiple contributors](https://superuser.com/questions/1685845/moving-current-window-to-another-desktop-in-windows-11-using-shortcut-keys)
+- **_winarrange.ahk**: Based on [ancient AutoHotKey forum post](https://www.autohotkey.com/board/topic/80580-how-to-programmatically-tile-cascade-windows/), updated for AHK v2 and Win11
+- **app-specific-tab-switcher.ahk**: Original implementation inspired by macOS Command+` functionality
 - **VD.ahk library**: Created by [FuPeiJiang](https://github.com/FuPeiJiang/VD.ahk)
 
 ---

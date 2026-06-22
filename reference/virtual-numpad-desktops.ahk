@@ -1,5 +1,5 @@
 ; Direct (absolute) virtual-desktop access via the numeric keypad.
-; Mirrors the relative-arrow scheme in VD-navigate-wraparound.ahk / VD-move-window.ahk,
+; Mirrors the relative-arrow scheme in virtual-navigate-wraparound.ahk / virtual-move-window.ahk,
 ; but jumps straight to a numbered desktop (1-9) instead of stepping left/right.
 ;
 ; NOTE: NumLock must be ON (these bind the digit keys Numpad1..Numpad9).
@@ -18,7 +18,7 @@ SetWinDelay -1
 SetControlDelay -1
 
 ; Include the library
-#Include lib/VD.ah2
+#Include ../lib/VD.ah2
 
 ; You should WinHide invisible programs that have a window.
 try {
