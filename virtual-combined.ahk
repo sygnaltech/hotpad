@@ -89,7 +89,7 @@ class VirtualBack {
 ; A_ScriptDir is the entry script's dir (works whether run directly or #Included
 ; from startup.ahk, since both live alongside virtual-icon.ico).
 TraySetIcon A_ScriptDir "\virtual-icon.ico"
-A_IconTip := "Virtual Desktop Suite"
+A_IconTip := "Sygnal HotPad"
 
 VD.createUntil(3) ; Create until we have at least 3 virtual desktops
 
@@ -571,17 +571,17 @@ KpBlitLayered(hwnd, pBmp, x, y, w, h) {
 }
 
 ; =============================================================================
-; SETTINGS (persisted per-machine in %APPDATA%\VirtualDesktopSuite\settings.ini)
+; SETTINGS (persisted per-machine in %APPDATA%\Sygnal HotPad\settings.ini)
 ; =============================================================================
 
-ConfigFile() => A_AppData "\VirtualDesktopSuite\settings.ini"
+ConfigFile() => A_AppData "\Sygnal HotPad\settings.ini"
 
 LoadConfig() {
     VirtualGrid.Scale := IniRead(ConfigFile(), "Keypad", "Scale", "1.0") + 0 ; +0 -> number
 }
 
 SaveScale(scale) {
-    dir := A_AppData "\VirtualDesktopSuite"
+    dir := A_AppData "\Sygnal HotPad"
     if !DirExist(dir)
         DirCreate(dir)
     IniWrite(scale, ConfigFile(), "Keypad", "Scale")
@@ -591,7 +591,7 @@ SaveScale(scale) {
 
 ; Tray > Settings window. Dark, matches the keypad/rename styling.
 ShowSettings(*) {
-    sg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Virtual Desktop Suite - Settings")
+    sg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Sygnal HotPad - Settings")
     sg.BackColor := "2B2B2B"
     sg.MarginX := 18, sg.MarginY := 16
     sg.SetFont("s10 Bold", "Segoe UI")

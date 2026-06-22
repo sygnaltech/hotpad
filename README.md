@@ -1,7 +1,10 @@
 **Library & Setup Instructions all updated to AHK 2.0** 
 
-# Win11AutoHotKeyFixes
-This is to resolve deficiencies of Win11 window management, specifically moving active window to next desktop and cascading/tiling windows.
+# Sygnal HotPad
+
+A hotkey + numpad virtual-desktop manager for Windows 11 — one tray app to switch desktops, move and pin windows, name desktops, and pop a numpad-style preview HUD (hold `Ctrl+Win`).
+
+This started as a set of fixes for Win11 window management, specifically moving the active window to the next desktop and cascading/tiling windows.
 
 The App Specific Switcher came about because I wanted to duplicate the MacOS functionality of Using command-backtick (⌘-\`) to toggle between windows.  That comes as close as I could get it, which works pretty well I think.
 
@@ -21,7 +24,7 @@ Double click to execute them, and they will remain running until terminated via 
 
 The scripts in this library utilize FuPeiJiang's Virtual Desktop library **VD.ahk**, which adds AutoHotkey functions for managing virtual desktops. **It is bundled with this repo** (vendored as [`lib/VD.ah2`](lib/VD.ah2)), so there is nothing extra to download — a clone or ZIP download of this repository works on its own. See [`lib/UPSTREAM.md`](lib/UPSTREAM.md) for the source, version, and how to update it.
 
-The virtual-desktop features are bundled into a single script, **`virtual-combined.ahk`**, launched by **`startup.ahk`** — so everything runs as **one process / one tray icon** ("Virtual Desktop Suite"). You just run `startup.ahk`.
+The virtual-desktop features are bundled into a single script, **`virtual-combined.ahk`**, launched by **`startup.ahk`** — so everything runs as **one process / one tray icon** ("Sygnal HotPad"). You just run `startup.ahk`.
 
 Two extra features live in their own standalone scripts under `extras/` (run them separately if you want them):
 
@@ -106,7 +109,7 @@ These hotkeys come from the **suite** (`startup.ahk` → `virtual-combined.ahk`)
 
  - **Hold `Ctrl + Win`**: Show a numeric-keypad preview of your desktops on the primary monitor — keys `1`–`9` are desktops 1–9 (1 = bottom-left, 9 = top-right) and `0` is desktop 10. The current desktop's key is highlighted, and each desktop's name shows beneath its number. Release to dismiss. (The `= / * BS − + Enter` keys are placeholders for now.)
  - `Ctrl + Win + NumpadDot`: Rename the current desktop. Names use the native Windows 11 desktop names, so they persist and also appear in Task View.
- - **Tray icon → Settings**: Choose the keypad size — Small (100%), Medium (150%), or Large (200%). Your choice is saved to `%APPDATA%\VirtualDesktopSuite\settings.ini` and remembered across restarts.
+ - **Tray icon → Settings**: Choose the keypad size — Small (100%), Medium (150%), or Large (200%). Your choice is saved to `%APPDATA%\Sygnal HotPad\settings.ini` and remembered across restarts.
 
 ---
 

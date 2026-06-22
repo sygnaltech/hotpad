@@ -10,7 +10,7 @@ All scripts are written in AutoHotKey v2.0 and depend on the [VD.ahk](https://gi
 
 ### Current layout (consolidated)
 
-The virtual-desktop functionality is now consolidated into a **single** script, [virtual-combined.ahk](virtual-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `virtual-icon.ico`, with the tray tooltip "Virtual Desktop Suite").
+The virtual-desktop functionality is now consolidated into a **single** script, [virtual-combined.ahk](virtual-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `virtual-icon.ico`, with the tray tooltip "Sygnal HotPad").
 
 - **[startup.ahk](startup.ahk)** is the entry point. It `#Include`s `virtual-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
 - **[virtual-combined.ahk](virtual-combined.ahk)** merges what used to be five separate scripts: `virtual-navigate-wraparound.ahk`, `virtual-move-window.ahk`, `virtual-numpad-desktops.ahk`, `virtual-pin-app.ahk`, and `virtual-grid.ahk` (the preview HUD + desktop rename). It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
@@ -37,7 +37,7 @@ These features live only in the consolidated script (their original was `virtual
 
 - **Preview keypad** — holding `Ctrl+Win` shows a full numeric-keypad HUD rendered with **GDI+** onto a **layered window** (`UpdateLayeredWindow`, `WS_EX_LAYERED | WS_EX_NOACTIVATE`), centered on the **primary** monitor. Layout matches a real numpad: `= / * BS` / `7 8 9 −` / `4 5 6 +` / `1 2 3 Enter` / `0 .`, so `1`–`9` map to desktops 1–9 (1 = bottom-left, 9 = top-right) and the `0` key is **desktop 10** (labelled "0"). The current desktop's key is filled blue; each desktop's name is drawn beneath its number (number position is fixed whether or not a name exists). The `= / * BS − + Enter` keys are inert placeholders for future assignment; the backspace key uses a bundled icon (`assets/keys/bs.png`, rasterized from `bs.svg`). Driven by a lightweight `SetTimer CheckChord, 75` poll; a `class VirtualGrid` holds geometry, ARGB colors, the `Scale` setting, and runtime state. Renderer entry point is `RenderKeypad()` (+ `Kp*` helpers); redraws only on desktop change. Purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
 - **Desktop rename** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off) opens a dark, keypad-styled dialog (`ShowRenameDialog`) to name the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and also appear in Task View.
-- **Settings (persisted)** — the tray right-click menu has a **Settings** entry (`ShowSettings`) to pick the keypad size **Small (100%) / Medium (150%) / Large (200%)**. The choice is saved to `%APPDATA%\VirtualDesktopSuite\settings.ini` (`[Keypad] Scale=…`) via `LoadConfig` / `SaveScale`, loaded at startup, and applied immediately (the whole keypad — keys, fonts, icon, radii — scales by `VirtualGrid.Scale`). This is the per-machine config store, kept out of the repo so it survives updates.
+- **Settings (persisted)** — the tray right-click menu has a **Settings** entry (`ShowSettings`) to pick the keypad size **Small (100%) / Medium (150%) / Large (200%)**. The choice is saved to `%APPDATA%\Sygnal HotPad\settings.ini` (`[Keypad] Scale=…`) via `LoadConfig` / `SaveScale`, loaded at startup, and applied immediately (the whole keypad — keys, fonts, icon, radii — scales by `VirtualGrid.Scale`). This is the per-machine config store, kept out of the repo so it survives updates.
 
 The per-script sections below document the original scripts; their logic is what `virtual-combined.ahk` consolidates.
 
@@ -394,7 +394,7 @@ Enable debugging output:
 | [legacy/](legacy/) | legacy/ | Older/niche/personal scripts + notes (chrome-tab-search, key-detector, emoji-key, etc.) | — |
 | [virtual-icon.ico](virtual-icon.ico) / [virtual-icon.svg](virtual-icon.svg) | Asset | Blue tray icon for the suite | None |
 | [assets/keys/bs.png](assets/keys/bs.png) / `bs.svg` | Asset | Backspace key icon for the preview keypad | None |
-| `%APPDATA%\VirtualDesktopSuite\settings.ini` | Config (per-machine, not in repo) | Persisted settings, e.g. `[Keypad] Scale` | None |
+| `%APPDATA%\Sygnal HotPad\settings.ini` | Config (per-machine, not in repo) | Persisted settings, e.g. `[Keypad] Scale` | None |
 
 ---
 
@@ -439,7 +439,7 @@ Enable debugging output:
 |-----------------|--------|
 | `Ctrl + Win` (hold) | Show the numpad keypad HUD (desktops 1–10, current highlighted, names shown) on the primary monitor; release to dismiss |
 | `Ctrl + Win + NumpadDot` | Rename the current desktop (native Win11 name; also `NumpadDel` for NumLock-off) |
-| Tray icon → **Settings** | Pick keypad size Small / Medium / Large (persisted to `%APPDATA%\VirtualDesktopSuite\settings.ini`) |
+| Tray icon → **Settings** | Pick keypad size Small / Medium / Large (persisted to `%APPDATA%\Sygnal HotPad\settings.ini`) |
 
 ### Window Arrangement
 
