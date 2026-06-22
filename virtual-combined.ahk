@@ -84,6 +84,13 @@ class VirtualBack {
     static Max := 10            ; how many steps of history to keep
 }
 
+; Configurable operator-key launchers (see the LAUNCHER section for the logic).
+; Defined up here with the other classes so its static init isn't flagged as
+; unreachable code after the auto-execute return.
+class LaunchCfg {
+    static Items := Map()   ; id -> {action:"app"|"chrome"|"none", path, args, profile}
+}
+
 ; ---- Init (auto-execute section) -------------------------------------------
 ; Distinct tray icon + tooltip so the single combined process is identifiable.
 ; A_ScriptDir is the entry script's dir (works whether run directly or #Included
@@ -102,8 +109,10 @@ VirtualGrid.GdipToken := gdipTok
 
 ; Load persisted settings, and add a "Settings" entry to the tray right-click menu.
 LoadConfig()
+LoadLaunchers()
+A_TrayMenu.Insert("1&", "Launchers", (*) => ShowHotpadDialog("launchers"))
 A_TrayMenu.Insert("1&", "Settings", (*) => ShowHotpadDialog("settings"))
-A_TrayMenu.Insert("2&")
+A_TrayMenu.Insert("3&")
 
 ; The Numpad hotkeys are registered at runtime, so this loop MUST run in the
 ; auto-execute section (before the first `return`/hotkey label) or they won't bind.
@@ -115,6 +124,9 @@ Loop 10 {
     Hotkey "^!#Numpad" n, MoveAbsoluteFollowClosure(d) ; Ctrl+Alt+Win+N   -> move window to d + follow
     Hotkey "!#Numpad" n, MoveAbsoluteStayClosure(d)    ; Alt+Win+N        -> move window to d, stay
 }
+
+; Bind the configurable operator-key launchers from the saved config.
+ApplyLaunchers()
 
 ; Poll for the Ctrl+Win chord that shows the preview grid (robust, and never
 ; interferes with the modifier-based hotkeys above).
@@ -153,13 +165,10 @@ return
 ; find it and change the key name below.
 ^#Backspace:: GoBackDesktop()
 
-; --- Launch Chrome on the CURRENT desktop (Ctrl+Win + /) ---
-; Pops a small profile menu, then opens the chosen profile in a NEW window on the
-; current virtual desktop. Bound on both the numpad divide (matches the "/" key on
-; the preview keypad HUD) and the main-row slash. No `~`, so the slash isn't typed.
-; See ChromeMenu() for why we use our own menu instead of Chrome's profile picker.
-^#/::        ChromeMenu()
-^#NumpadDiv:: ChromeMenu()
+; --- Configurable launcher keys (Ctrl+Win + operator keys) ---
+; The operator keys (+ - * / Enter = ( ) ) are bound dynamically from the saved
+; config by ApplyLaunchers() in the auto-execute section above — see the LAUNCHER
+; section near the Chrome helpers. By default "/" opens the Chrome profile menu.
 
 ; =============================================================================
 ; CLOSURE FACTORIES (for the runtime-registered Numpad hotkeys)
@@ -173,6 +182,103 @@ MoveAbsoluteStayClosure(n)   => (*) => MoveActiveAbsolute(n, false)
 ; =============================================================================
 ; APP LAUNCH
 ; =============================================================================
+
+; ---- Configurable operator-key launchers -----------------------------------
+; Each operator key on the keypad (Ctrl+Win + + - * / Enter = ( ) ) can be
+; assigned to launch an app, or Chrome with a chosen profile. Assignments live in
+; the INI ([Launch_<id>] sections) and are edited from the Settings dialog.
+
+; The bindable operator keys. glyph = shown in the UI/HUD; keys = every AHK hotkey
+; string to bind for it (numpad + main row where both exist and are nameable;
+; main-row * and + are omitted because they collide with AHK's wildcard/Shift
+; syntax, so the numpad versions cover them).
+LauncherDefs() {
+    return [
+        {id:"div",    glyph:"/",     keys:["^#NumpadDiv", "^#/"]},
+        {id:"mult",   glyph:"*",     keys:["^#NumpadMult"]},
+        {id:"sub",    glyph:"−",     keys:["^#NumpadSub", "^#-"]},
+        {id:"add",    glyph:"+",     keys:["^#NumpadAdd"]},
+        {id:"enter",  glyph:"Enter", keys:["^#NumpadEnter"]},
+        {id:"eq",     glyph:"=",     keys:["^#="]},
+        {id:"lparen", glyph:"(",     keys:["^#("]},
+        {id:"rparen", glyph:")",     keys:["^#)"]},
+    ]
+}
+
+; Read launcher assignments from the INI. The first time (before any save), seed
+; the "/" key to the Chrome profile menu so the prior Chrome-on-/ still works.
+LoadLaunchers() {
+    f := ConfigFile()
+    seeded := IniRead(f, "Launchers", "Seeded", "")
+    LaunchCfg.Items := Map()
+    for d in LauncherDefs() {
+        sec := "Launch_" d.id
+        action := IniRead(f, sec, "Action", "")
+        if (action = "") {
+            if (!seeded && d.id = "div")   ; default seed
+                LaunchCfg.Items[d.id] := {action:"chrome", path:"", args:"", profile:"ask"}
+            continue
+        }
+        LaunchCfg.Items[d.id] := {action: action, path: IniRead(f, sec, "Path", ""), args: IniRead(f, sec, "Args", ""), profile: IniRead(f, sec, "Profile", "ask")}
+    }
+}
+
+; Persist the given assignments (id -> object), then re-bind the hotkeys.
+SaveLaunchers(items) {
+    f := ConfigFile()
+    dir := A_AppData "\Sygnal HotPad"
+    if !DirExist(dir)
+        DirCreate(dir)
+    for d in LauncherDefs() {
+        sec := "Launch_" d.id
+        if (items.Has(d.id) && items[d.id].action != "" && items[d.id].action != "none") {
+            e := items[d.id]
+            IniWrite(e.action, f, sec, "Action")
+            IniWrite(e.HasOwnProp("path")    ? e.path    : "", f, sec, "Path")
+            IniWrite(e.HasOwnProp("args")    ? e.args    : "", f, sec, "Args")
+            IniWrite(e.HasOwnProp("profile") ? e.profile : "ask", f, sec, "Profile")
+        } else {
+            try IniDelete(f, sec)
+        }
+    }
+    IniWrite(1, f, "Launchers", "Seeded")
+    LaunchCfg.Items := items
+    ApplyLaunchers()
+}
+
+; (Re)bind every operator hotkey to match the current config. Assigned keys are
+; turned On; everything else is bound disabled (Off) so a re-save can clear them.
+ApplyLaunchers() {
+    for d in LauncherDefs() {
+        e := LaunchCfg.Items.Has(d.id) ? LaunchCfg.Items[d.id] : 0
+        on := e && e.action != "" && e.action != "none"
+        handler := LauncherClosure(d.id)
+        for k in d.keys
+            try Hotkey(k, handler, on ? "On" : "Off")
+    }
+}
+
+LauncherClosure(id) => (*) => RunLauncher(id)
+
+; Fire the launcher assigned to operator key `id`.
+RunLauncher(id) {
+    if !LaunchCfg.Items.Has(id)
+        return
+    e := LaunchCfg.Items[id]
+    if (e.action = "chrome") {
+        if (e.profile = "ask" || e.profile = "")
+            ChromeMenu()
+        else
+            LaunchChromeProfile(e.profile)
+    } else if (e.action = "app") {
+        if (e.path = "")
+            return
+        try
+            Run('"' e.path '" ' e.args)
+        catch as err
+            MsgBox "Couldn't launch:`n" e.path "`n`n" err.Message, "Sygnal HotPad", "Icon!"
+    }
+}
 
 ; Why a menu instead of Chrome's own picker:
 ; Launching `chrome.exe --new-window` with NO profile shows Chrome's profile
@@ -194,18 +300,24 @@ ChromeMenu() {
 
 BuildChromeMenu() {
     m := Menu()
-    dir := EnvGet("LocalAppData") "\Google\Chrome\User Data"
-    count := 0
-    ; Read the live profile folders so the menu stays in sync with Chrome.
-    Loop Files dir "\*", "D" {
-        if (A_LoopFileName = "Default" || RegExMatch(A_LoopFileName, "^Profile \d+$")) {
-            m.Add(A_LoopFileName, ChromeProfileClosure(A_LoopFileName))
-            count++
-        }
-    }
-    if (count = 0)   ; no profiles found -> a single "new window" entry
+    dirs := ChromeProfileDirs()
+    for d in dirs
+        m.Add(d, ChromeProfileClosure(d))
+    if (dirs.Length = 0)   ; no profiles found -> a single "new window" entry
         m.Add("New Chrome window", ChromeProfileClosure(""))
     return m
+}
+
+; The live Chrome profile folder names (Default, Profile 1, …), read from disk so
+; the menu and the Settings profile dropdown stay in sync on any machine.
+ChromeProfileDirs() {
+    dirs := []
+    base := EnvGet("LocalAppData") "\Google\Chrome\User Data"
+    Loop Files base "\*", "D" {
+        if (A_LoopFileName = "Default" || RegExMatch(A_LoopFileName, "^Profile \d+$"))
+            dirs.Push(A_LoopFileName)
+    }
+    return dirs
 }
 
 ChromeProfileClosure(dir) => (*) => LaunchChromeProfile(dir)
@@ -629,10 +741,10 @@ SaveScale(scale) {
     VirtualGrid.ShownFor := -1 ; force a re-render at the new scale next time the keypad shows
 }
 
-; Combined Desktop + Settings dialog. Dark, with custom (on-theme) tab headers.
-; startTab = "desktop" (rename the current desktop) | "settings" (system settings).
-; Opened from Ctrl+Win+NumpadDot (Desktop tab) and the tray menu (Settings tab).
-; A single Save applies BOTH the desktop name and the settings.
+; Combined Desktop + Settings + Launchers dialog. Dark, with custom (on-theme)
+; tab headers. startTab = "desktop" | "settings" | "launchers".
+; Opened from Ctrl+Win+NumpadDot (Desktop tab) and the tray menu. A single Save
+; applies the desktop name, the keypad settings, AND the launcher assignments.
 ShowHotpadDialog(startTab := "desktop") {
     static gOpen := 0
     if (gOpen && WinExist("ahk_id " gOpen)) {   ; already open -> just surface it
@@ -644,27 +756,33 @@ ShowHotpadDialog(startTab := "desktop") {
     VirtualGrid.Naming := true   ; suppress the HUD while the dialog is up
     HideGrid()
 
+    ; A working copy of the launcher config the Launchers tab edits; committed on Save.
+    workItems := Map()
+    for id, e in LaunchCfg.Items
+        workItems[id] := {action: e.action, path: (e.HasOwnProp("path") ? e.path : ""), args: (e.HasOwnProp("args") ? e.args : ""), profile: (e.HasOwnProp("profile") ? e.profile : "ask")}
+
     dlg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Sygnal HotPad")
     dlg.BackColor := "2B2B2B"
     dlg.MarginX := 16, dlg.MarginY := 14
 
-    ; Custom dark tab strip (selected = blue; text stays white for both so we only
+    ; Custom dark tab strip (selected = blue; text stays white for all so we only
     ; have to toggle the background, which Opt()+Redraw handles cleanly).
     dlg.SetFont("s10 Bold", "Segoe UI")
-    tabW := 120, tabH := 30
+    tabW := 112, tabH := 30
     hD := dlg.AddText("xm ym w" tabW " h" tabH " Center 0x200 cFFFFFF Background3A3A3A", "Desktop")
     hS := dlg.AddText("x+2 yp w" tabW " h" tabH " Center 0x200 cFFFFFF Background3A3A3A", "Settings")
+    hL := dlg.AddText("x+2 yp w" tabW " h" tabH " Center 0x200 cFFFFFF Background3A3A3A", "Launchers")
     dlg.SetFont("s10 Norm")
 
     cy := tabH + 28   ; top of the panel content, just below the tab strip
 
     ; --- Desktop panel: rename the current desktop ---
     lblD := dlg.AddText("xm y" cy " cD6D6D6", "Name for desktop " n ":")
-    edit := dlg.AddEdit("xm y+8 w300 r1 Background3A3A3A cFFFFFF -E0x200")
+    edit := dlg.AddEdit("xm y+8 w360 r1 Background3A3A3A cFFFFFF -E0x200")
     edit.Value := DesktopName(n)
 
-    ; --- Settings panel: system-level hotpad settings (overlaps the Desktop panel;
-    ; the two are toggled by tab). Add new system settings here. ---
+    ; --- Settings panel: system-level hotpad settings (panels overlap; toggled by
+    ; tab). Add new system settings here. ---
     dlg.SetFont("s10 Bold")
     lblS := dlg.AddText("xm y" cy " cD6D6D6", "Keypad size")
     dlg.SetFont("s10 Norm")
@@ -672,24 +790,69 @@ ShowHotpadDialog(startTab := "desktop") {
     rM := dlg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.25 && VirtualGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
     rL := dlg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
 
-    ; --- shared buttons, below the taller (settings) panel ---
+    ; --- Launchers panel: a Key | Action | Target table. Double-click a row (or
+    ; Edit…) to assign it an app or Chrome+profile. ---
+    lblL := dlg.AddText("xm y" cy " cD6D6D6", "Ctrl+Win + each key launches its assignment. Double-click a row to change it.")
+    lv := dlg.AddListView("xm y+8 w360 r9 Background2B2B2B cE0E0E0 -Multi +LV0x10000", ["Key", "Action", "Target"])  ; LVS_EX_DOUBLEBUFFER
+    editBtn := dlg.AddButton("xm y+8 w120", "Edit…")
+
+    RefreshLV() {
+        lv.Delete()
+        for d in LauncherDefs() {
+            e := workItems.Has(d.id) ? workItems[d.id] : 0
+            if (!e || e.action = "" || e.action = "none") {
+                lv.Add(, d.glyph, "—", "—")
+                continue
+            }
+            if (e.action = "chrome") {
+                tgt := (e.profile = "ask" || e.profile = "") ? "(ask each time)" : e.profile
+                lv.Add(, d.glyph, "Chrome", tgt)
+            } else {
+                nm := ""
+                if (e.path != "")
+                    SplitPath(e.path, &nm)
+                lv.Add(, d.glyph, "Application", nm = "" ? "—" : nm)
+            }
+        }
+        lv.ModifyCol(1, 60), lv.ModifyCol(2, 95), lv.ModifyCol(3, 195)
+    }
+
+    EditSelected() {
+        row := lv.GetNext()
+        if !row
+            return
+        d := LauncherDefs()[row]
+        cur := workItems.Has(d.id) ? workItems[d.id] : {action: "none", path: "", args: "", profile: "ask"}
+        res := EditLauncher(dlg, d.glyph, cur)
+        if (res != "") {
+            workItems[d.id] := res
+            RefreshLV()
+            lv.Modify(row, "Select Focus")
+        }
+    }
+
+    ; --- shared buttons, below the tallest (Launchers) panel ---
     dlg.SetFont("s9")
-    save := dlg.AddButton("xm y" (cy + 132) " w95 Default", "Save")
+    save := dlg.AddButton("xm y+16 w95 Default", "Save")
     cancel := dlg.AddButton("x+10 w95", "Cancel")
     dlg.SetFont("s10 Norm")
 
-    desktopCtrls := [lblD, edit]
+    desktopCtrls  := [lblD, edit]
     settingsCtrls := [lblS, rS, rM, rL]
+    launcherCtrls := [lblL, lv, editBtn]
 
     SwitchTab(which) {
-        isD := (which != "settings")
+        isD := (which = "desktop"), isS := (which = "settings"), isL := (which = "launchers")
         for c in desktopCtrls
             c.Visible := isD
         for c in settingsCtrls
-            c.Visible := !isD
+            c.Visible := isS
+        for c in launcherCtrls
+            c.Visible := isL
         hD.Opt(isD ? "Background1E90FF" : "Background3A3A3A")
-        hS.Opt(isD ? "Background3A3A3A" : "Background1E90FF")
-        hD.Redraw(), hS.Redraw()
+        hS.Opt(isS ? "Background1E90FF" : "Background3A3A3A")
+        hL.Opt(isL ? "Background1E90FF" : "Background3A3A3A")
+        hD.Redraw(), hS.Redraw(), hL.Redraw()
         if (isD) {
             edit.Focus()
             try SendMessage(0xB1, 0, -1, edit)   ; EM_SETSEL -> select all
@@ -704,17 +867,101 @@ ShowHotpadDialog(startTab := "desktop") {
         if (savep) {
             VD.setNameToDesktopNum(nm, n)
             SaveScale(sc)
+            SaveLaunchers(workItems)
         }
     }
 
     hD.OnEvent("Click", (*) => SwitchTab("desktop"))
     hS.OnEvent("Click", (*) => SwitchTab("settings"))
+    hL.OnEvent("Click", (*) => SwitchTab("launchers"))
+    lv.OnEvent("DoubleClick", (*) => EditSelected())
+    editBtn.OnEvent("Click", (*) => EditSelected())
     save.OnEvent("Click", (*) => Finish(true))
     cancel.OnEvent("Click", (*) => Finish(false))
     dlg.OnEvent("Escape", (*) => Finish(false))
     dlg.OnEvent("Close", (*) => Finish(false))
 
-    dlg.Show("AutoSize Center")   ; sized for both panels (all controls visible here)
+    RefreshLV()
+    dlg.Show("AutoSize Center")   ; sized for all panels (everything visible here)
     SwitchTab(startTab)            ; then reveal just the requested tab
     gOpen := dlg.Hwnd
+}
+
+; Modal sub-dialog to assign one operator key. Returns the new item object
+; {action, path, args, profile}, or "" if cancelled. Fixed layout: the App and
+; Chrome controls share the same region (y 74/96) and are toggled by Action.
+EditLauncher(parent, glyph, cur) {
+    result := ""
+    g := Gui("-MinimizeBox -MaximizeBox +Owner" parent.Hwnd, "Assign  " glyph)
+    g.BackColor := "2B2B2B"
+    g.MarginX := 16, g.MarginY := 14
+    g.SetFont("s10", "Segoe UI")
+
+    g.AddText("xm y14 cD6D6D6", "When you press Ctrl+Win+" glyph ":")
+    actDDL := g.AddDropDownList("xm y36 w320 Choose" (cur.action = "app" ? 2 : cur.action = "chrome" ? 3 : 1), ["Do nothing", "Launch an application", "Open Chrome"])
+
+    ; Application controls.
+    appLbl  := g.AddText("xm y74 cD6D6D6", "Program:")
+    pathEd  := g.AddEdit("xm y96 w320 Background3A3A3A cFFFFFF -E0x200 ReadOnly", cur.action = "app" ? cur.path : "")
+    browse  := g.AddButton("xm y126 w120", "Browse…")
+    argsLbl := g.AddText("xm y162 cD6D6D6", "Arguments (optional):")
+    argsEd  := g.AddEdit("xm y184 w320 Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.args : "")
+
+    ; Chrome controls, sharing the App region's top.
+    profList := ["Ask each time"]
+    for p in ChromeProfileDirs()
+        profList.Push(p)
+    chooseIdx := 1
+    if (cur.action = "chrome" && cur.profile != "ask" && cur.profile != "") {
+        for i, p in profList
+            if (p = cur.profile)
+                chooseIdx := i
+    }
+    profLbl := g.AddText("xm y74 cD6D6D6", "Profile:")
+    profDDL := g.AddDropDownList("xm y96 w320 Choose" chooseIdx, profList)
+
+    okBtn := g.AddButton("xm y222 w95 Default", "OK")
+    cnBtn := g.AddButton("x+10 yp w95", "Cancel")
+
+    UpdateMode(*) {
+        m := actDDL.Value   ; 1=none 2=app 3=chrome
+        for c in [appLbl, pathEd, browse, argsLbl, argsEd]
+            c.Visible := (m = 2)
+        for c in [profLbl, profDDL]
+            c.Visible := (m = 3)
+    }
+
+    PickFile(*) {
+        f := FileSelect(3, , "Choose a program", "Programs (*.exe)")
+        if (f != "")
+            pathEd.Value := f
+    }
+
+    Done(ok) {
+        if (ok) {
+            m := actDDL.Value
+            if (m = 1)
+                result := {action: "none", path: "", args: "", profile: "ask"}
+            else if (m = 2)
+                result := {action: "app", path: pathEd.Value, args: argsEd.Value, profile: "ask"}
+            else
+                result := {action: "chrome", path: "", args: "", profile: (profDDL.Text = "Ask each time" ? "ask" : profDDL.Text)}
+        }
+        g.Destroy()
+    }
+
+    actDDL.OnEvent("Change", UpdateMode)
+    browse.OnEvent("Click", PickFile)
+    okBtn.OnEvent("Click", (*) => Done(true))
+    cnBtn.OnEvent("Click", (*) => Done(false))
+    g.OnEvent("Escape", (*) => Done(false))
+    g.OnEvent("Close", (*) => Done(false))
+
+    UpdateMode()
+    parent.Opt("+Disabled")
+    g.Show("w352 h268 Center")
+    WinWaitClose("ahk_id " g.Hwnd)
+    parent.Opt("-Disabled")
+    WinActivate("ahk_id " parent.Hwnd)
+    return result
 }
