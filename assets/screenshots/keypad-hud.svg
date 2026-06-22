@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="392" height="484" viewBox="0 0 392 484" font-family="Segoe UI, Segoe, system-ui, sans-serif">
+  <!-- Faithful reproduction of the Ctrl+Win preview keypad HUD rendered by
+       virtual-combined.ahk (RenderKeypad). 100% scale: Pad 18 / Cell 80 / Gap 12.
+       Current desktop = 2 (filled blue). Desktops 1-5 named to show the feature. -->
+
+  <!-- Body -->
+  <rect x="0" y="0" width="392" height="484" rx="22" fill="#3A3A3A"/>
+
+  <!-- Row 0: =  /  *  backspace -->
+  <g>
+    <rect x="18"  y="18" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="58"  y="58" fill="#D6D6D6" font-size="40" text-anchor="middle" dominant-baseline="central">=</text>
+    <rect x="110" y="18" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="150" y="58" fill="#D6D6D6" font-size="40" text-anchor="middle" dominant-baseline="central">/</text>
+    <rect x="202" y="18" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="242" y="58" fill="#D6D6D6" font-size="40" text-anchor="middle" dominant-baseline="central">*</text>
+    <rect x="294" y="18" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="334" y="60" fill="#D6D6D6" font-size="34" text-anchor="middle" dominant-baseline="central">&#9003;</text>
+  </g>
+
+  <!-- Row 1: 7  8  9  minus -->
+  <g>
+    <rect x="18"  y="110" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="58"  y="141" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">7</text>
+    <text x="58"  y="172" fill="#9AA0A6" font-size="16" text-anchor="middle" dominant-baseline="central"></text>
+    <rect x="110" y="110" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="150" y="141" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">8</text>
+    <rect x="202" y="110" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="242" y="141" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">9</text>
+    <rect x="294" y="110" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="334" y="150" fill="#D6D6D6" font-size="45" text-anchor="middle" dominant-baseline="central">&#8722;</text>
+  </g>
+
+  <!-- Row 2: 4  5  6  plus -->
+  <g>
+    <rect x="18"  y="202" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="58"  y="233" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">4</text>
+    <text x="58"  y="264" fill="#9AA0A6" font-size="16" text-anchor="middle" dominant-baseline="central">Chat</text>
+    <rect x="110" y="202" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="150" y="233" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">5</text>
+    <text x="150" y="264" fill="#9AA0A6" font-size="16" text-anchor="middle" dominant-baseline="central">Media</text>
+    <rect x="202" y="202" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="242" y="233" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">6</text>
+    <rect x="294" y="202" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="334" y="242" fill="#D6D6D6" font-size="45" text-anchor="middle" dominant-baseline="central">+</text>
+  </g>
+
+  <!-- Row 3: 1  2(current)  3  Enter(spans rows 3-4) -->
+  <g>
+    <rect x="18"  y="294" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="58"  y="325" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">1</text>
+    <text x="58"  y="356" fill="#9AA0A6" font-size="16" text-anchor="middle" dominant-baseline="central">Main</text>
+
+    <!-- current desktop: blue fill + lighter border + white text -->
+    <rect x="110" y="294" width="80" height="80" rx="10" fill="#1E90FF" stroke="#5CB0FF" stroke-width="1.5"/>
+    <text x="150" y="325" fill="#FFFFFF" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">2</text>
+    <text x="150" y="356" fill="#EAF4FF" font-size="16" text-anchor="middle" dominant-baseline="central">Code</text>
+
+    <rect x="202" y="294" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="242" y="325" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">3</text>
+    <text x="242" y="356" fill="#9AA0A6" font-size="16" text-anchor="middle" dominant-baseline="central">Web</text>
+
+    <rect x="294" y="294" width="80" height="172" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="334" y="380" fill="#D6D6D6" font-size="27" text-anchor="middle" dominant-baseline="central">Enter</text>
+  </g>
+
+  <!-- Row 4: 0 (desktop 10, spans cols 0-1)  . -->
+  <g>
+    <rect x="18"  y="386" width="172" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="104" y="426" fill="#D6D6D6" font-size="40" font-weight="bold" text-anchor="middle" dominant-baseline="central">0</text>
+    <rect x="202" y="386" width="80" height="80" rx="10" fill="#3A3A3A" stroke="#808080" stroke-width="1.5"/>
+    <text x="242" y="426" fill="#D6D6D6" font-size="45" text-anchor="middle" dominant-baseline="central">.</text>
+  </g>
+</svg>

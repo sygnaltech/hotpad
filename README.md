@@ -1,6 +1,14 @@
+<img src="virtual-icon.svg" alt="Sygnal HotPad icon" width="96" align="right">
+
 # Sygnal HotPad
 
 A hotkey + numpad virtual-desktop manager for Windows 11. One tray app to switch desktops, move and pin windows, name desktops, and pop a numpad-style preview HUD — all from the keyboard. Built on [AutoHotkey v2](https://www.autohotkey.com/).
+
+<p align="center">
+  <img src="assets/screenshots/screenshot.png" alt="The Ctrl+Win preview keypad — a numpad-style map of virtual desktops, the current one highlighted, with desktop names" width="600">
+  <br>
+  <em>Hold <code>Ctrl+Win</code> for the preview keypad: desktops 1–10 laid out like a numpad, the current one highlighted, named desktops labelled.</em> 
+</p>
 
 ## Features
 
@@ -57,7 +65,7 @@ Not part of the suite; run the script directly if you want it:
 virtual-combined.ahk    the whole suite (one tray icon)
 startup.ahk             entry point — run this; it loads virtual-combined
 virtual-icon.*          tray icon
-assets/                 keypad key icons
+assets/                 keypad key icons + doc screenshots
 lib/                    bundled VD.ahk dependency (see lib/UPSTREAM.md)
 reference/              the individual scripts that were folded into the suite
 extras/                 standalone scripts (cascade, app switcher)
