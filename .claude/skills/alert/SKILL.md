@@ -31,13 +31,23 @@ Run from this skill's base directory via the PowerShell tool:
 
 - `-Type` — `problem` (default) | `attention` | `success` | `tick`.
 - `-Workspace` — folder to match; defaults to the current working directory.
+- `-Alerter` — who raised it; defaults to `Claude`.
 - `-Message` — optional line echoed alongside the sound.
 
 The script blocks until the tone finishes, then prints the workspace, VS Code window,
 desktop name/index, GUID, and whether that desktop is the one currently in view.
 
-## Status
+## Recording (for the hotpad UI)
 
-Proof-of-concept (identification only). Possible next steps once verified:
-`FlashWindowEx` the window's taskbar button from another desktop, and an optional
-"jump to that desktop" action (which *would* need the internal API / VirtualDesktopAccessor).
+When a desktop GUID is resolved, the script appends one tab-delimited line to
+`%APPDATA%\Sygnal HotPad\alerts.log`:
+
+```
+epoch <TAB> {GUID} <TAB> project <TAB> alerter
+```
+
+The hotpad keypad (`virtual-combined.ahk`) reads this to show a yellow dot on any
+desktop key with an unresolved alert, list recent alerts beside the keypad, and jump
+to a desktop on click. An alert is **unresolved** until you visit its desktop. The
+`{GUID}` is the stable desktop id (matches hotpad's own GUID formatting), so records
+survive desktop reordering.

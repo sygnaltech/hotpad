@@ -64,6 +64,8 @@ class VirtualGrid {
     static ColCurTxt  := 0xFFFFFFFF
     static ColName    := 0xFF9AA0A6  ; desktop name
     static ColCurName := 0xFFEAF4FF
+    static ColAlert   := 0xFFFFC400  ; unresolved-alert dot (amber/yellow)
+    static ColPanel   := 0xFF2E2E2E  ; alert list panel background
 
     ; Persisted settings (loaded from the config file at startup).
     static Scale := 1.0         ; keypad scale: 1.0 / 1.5 / 2.0 = Small / Medium / Large
@@ -73,6 +75,8 @@ class VirtualGrid {
     static ShownFor := -1       ; which desktop the shown keypad highlights
     static Naming := false      ; true while the rename box is open (suppresses the HUD)
     static GdipToken := 0       ; GDI+ token (started once at init)
+    static HudPx := 0           ; screen-x of the shown HUD bitmap (for click hit-testing)
+    static HudPy := 0           ; screen-y of the shown HUD bitmap
 }
 
 ; Desktop back-stack ("browser back" for virtual desktops). The poll in CheckChord
@@ -89,6 +93,19 @@ class VirtualBack {
 ; unreachable code after the auto-execute return.
 class LaunchCfg {
     static Items := Map()   ; id -> {action:"app"|"chrome"|"none", path, args, profile}
+}
+
+; ---- Alert state (desktop-aware notifications) ------------------------------
+; Alerts are appended to %APPDATA%\Sygnal HotPad\alerts.log by the `alert` skill
+; (one tab-delimited line: epoch <TAB> {GUID} <TAB> project <TAB> alerter). An
+; alert is "unresolved" until you visit the desktop it fired on; visiting stamps a
+; per-desktop watermark in visits.ini. See the ALERTS section for the logic.
+class Alerts {
+    static Visits := Map()       ; "{GUID}" -> epoch seconds last visited
+    static List := []            ; current display model (newest/unresolved first, cap 20)
+    static UnresByNum := Map()   ; current desktop number -> true if it has an unresolved alert
+    static RowHits := []         ; [{x1,y1,x2,y2,num}] list-row rects, bitmap-relative, for clicks
+    static LoadedVisits := false ; lazy-load guard for visits.ini
 }
 
 ; ---- Init (auto-execute section) -------------------------------------------
@@ -383,6 +400,7 @@ TrackDesktopHistory() {
             VirtualBack.Stack.RemoveAt(1)     ; drop the oldest beyond the cap
     }
     VirtualBack.Last := cur
+    MarkVisited(cur)   ; arriving at a desktop resolves its alerts (stamps the watermark)
 }
 
 ; "Browser back" for desktops: return to the most recent one you came from.
@@ -552,24 +570,52 @@ ShowOrUpdateGrid() {
     kpW := pad*2 + 4*cell + 3*gap
     kpH := pad*2 + 5*cell + 4*gap
 
-    pBmp := RenderKeypad(current, pad, cell, gap, s, kpW, kpH)
+    ; Build the alert model for this desktop (dots + list). When there are alerts,
+    ; a panel hangs off the right of the keypad; the keypad itself stays centered.
+    LoadAlertsModel(current)
+    showPanel := Alerts.List.Length > 0
+    panelGap := showPanel ? Round(16 * s) : 0
+    panelW   := showPanel ? Round(320 * s) : 0
+    panelX   := kpW + panelGap
+    totalW   := kpW + panelGap + panelW
+
+    pBmp := RenderKeypad(current, pad, cell, gap, s, kpW, kpH, totalW, panelX, panelW, showPanel)
 
     ; Create the layered, no-activate, always-on-top window once; reuse it after.
     if !VirtualGrid.Hud {
         g := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x80000 +E0x08000000") ; 0x80000=WS_EX_LAYERED, 0x08000000=WS_EX_NOACTIVATE
         g.Show("NoActivate Hide")
         VirtualGrid.Hud := g
+        OnMessage(0x201, HudClick)   ; WM_LBUTTONDOWN -> click an alert row to jump
     }
 
     MonitorGet(MonitorGetPrimary(), &mLeft, &mTop, &mRight, &mBottom)
+    ; Center the KEYPAD on the primary monitor; the panel extends to its right.
     px := mLeft + ((mRight - mLeft) - kpW) // 2
     py := mTop + ((mBottom - mTop) - kpH) // 2
+    VirtualGrid.HudPx := px, VirtualGrid.HudPy := py
 
-    KpBlitLayered(VirtualGrid.Hud.Hwnd, pBmp, px, py, kpW, kpH)
+    KpBlitLayered(VirtualGrid.Hud.Hwnd, pBmp, px, py, totalW, kpH)
     DllCall("ShowWindow", "Ptr", VirtualGrid.Hud.Hwnd, "Int", 8) ; SW_SHOWNA = show without activating
     DllCall("gdiplus\GdipDisposeImage", "Ptr", pBmp)
 
     VirtualGrid.ShownFor := current
+}
+
+; Click handler for the HUD: if the press lands on an alert row, jump to its desktop.
+; The HUD is layered + no-activate, but its opaque pixels still receive button-downs.
+HudClick(wParam, lParam, msg, hwnd) {
+    if (!VirtualGrid.Hud || hwnd != VirtualGrid.Hud.Hwnd || VirtualGrid.ShownFor = -1)
+        return
+    MouseGetPos(&mx, &my)
+    rx := mx - VirtualGrid.HudPx, ry := my - VirtualGrid.HudPy
+    for h in Alerts.RowHits {
+        if (rx >= h.x1 && rx <= h.x2 && ry >= h.y1 && ry <= h.y2) {
+            if (h.num > 0)
+                VD.goToDesktopNum(h.num)   ; arriving stamps the visit -> resolves it
+            return
+        }
+    }
 }
 
 HideGrid() {
@@ -620,10 +666,12 @@ KpKeyName(kd) {
     return ""
 }
 
-RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
+RenderKeypad(current, pad, cell, gap, s, kpW, kpH, totalW := 0, panelX := 0, panelW := 0, showPanel := false) {
     count := VD.getCount()
+    if (totalW = 0)
+        totalW := kpW
 
-    DllCall("gdiplus\GdipCreateBitmapFromScan0", "Int", kpW, "Int", kpH, "Int", 0, "Int", 0x26200A, "Ptr", 0, "Ptr*", &pBmp := 0)
+    DllCall("gdiplus\GdipCreateBitmapFromScan0", "Int", totalW, "Int", kpH, "Int", 0, "Int", 0x26200A, "Ptr", 0, "Ptr*", &pBmp := 0)
     DllCall("gdiplus\GdipGetImageGraphicsContext", "Ptr", pBmp, "Ptr*", &G := 0)
     DllCall("gdiplus\GdipSetSmoothingMode", "Ptr", G, "Int", 4)
     DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", G, "Int", 4)
@@ -651,6 +699,9 @@ RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
             KpText(G, lbl, kx, ky + 6*s, kw, kh - 30*s, 30*s, txtCol, true)
             if (nm != "")
                 KpText(G, nm, kx, ky + kh - 30*s, kw, 24*s, 12*s, isCur ? VirtualGrid.ColCurName : VirtualGrid.ColName)
+            ; Yellow dot, top-left of the key, when this desktop has an unresolved alert.
+            if (Alerts.UnresByNum.Has(kd.d))
+                KpDot(G, kx + 16*s, ky + 18*s, 6*s, VirtualGrid.ColAlert)
         } else if (kd.k = "glyph" || kd.k = "text") {
             sz := kd.HasOwnProp("sz") ? kd.sz : 30
             nm := KpKeyName(kd)
@@ -664,6 +715,33 @@ RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
         } else if (kd.k = "icon") {
             isz := Round(40 * s)
             KpIcon(G, A_ScriptDir "\" kd.ic, kx + (kw - isz)//2, ky + (kh - isz)//2, isz, isz)
+        }
+    }
+
+    ; ---- Alert list panel (to the right of the keypad) ----
+    Alerts.RowHits := []
+    if (showPanel) {
+        KpFill(G, panelX, 0, panelW, kpH, 18*s, VirtualGrid.ColPanel)
+
+        hY      := Round(12*s)
+        KpText(G, "Alerts", panelX + 16*s, hY, panelW - 32*s, 26*s, 15*s, VirtualGrid.ColName, true, 0)
+
+        listTop := hY + Round(34*s)
+        rowH    := Round(26*s)
+        maxRows := Floor((kpH - listTop - 10*s) / rowH)
+        rows    := Min(Alerts.List.Length, maxRows)
+
+        Loop rows {
+            a  := Alerts.List[A_Index]
+            ry := listTop + (A_Index - 1) * rowH
+            txtCol := a.unresolved ? VirtualGrid.ColTxt : VirtualGrid.ColName
+            ; Unresolved rows get a leading yellow dot.
+            if (a.unresolved)
+                KpDot(G, panelX + 18*s, ry + rowH/2, 5*s, VirtualGrid.ColAlert)
+            label := a.project " [ " a.alerter " ]"
+            KpText(G, label, panelX + 32*s, ry, panelW - 44*s, rowH, 13*s, txtCol, false, 0)
+            ; Record the row's rect (bitmap-relative) so a click can jump to its desktop.
+            Alerts.RowHits.Push({ x1: panelX, y1: ry, x2: panelX + panelW, y2: ry + rowH, num: a.num })
         }
     }
 
@@ -698,11 +776,13 @@ KpStroke(G, x, y, w, h, r, argb, width) {
     DllCall("gdiplus\GdipDeletePath", "Ptr", path)
 }
 
-KpText(G, str, x, y, w, h, size, argb, bold := false) {
+; align: 0=left(near), 1=center, 2=right(far). Strings never wrap (NoWrap flag), so
+; over-long labels clip to the rect instead of spilling onto a second line.
+KpText(G, str, x, y, w, h, size, argb, bold := false, align := 1) {
     DllCall("gdiplus\GdipCreateFontFamilyFromName", "Str", "Segoe UI", "Ptr", 0, "Ptr*", &fam := 0)
     DllCall("gdiplus\GdipCreateFont", "Ptr", fam, "Float", size, "Int", bold ? 1 : 0, "Int", 2, "Ptr*", &font := 0)
-    DllCall("gdiplus\GdipCreateStringFormat", "Int", 0, "Int", 0, "Ptr*", &fmt := 0)
-    DllCall("gdiplus\GdipSetStringFormatAlign", "Ptr", fmt, "Int", 1)
+    DllCall("gdiplus\GdipCreateStringFormat", "Int", 0x4000, "Int", 0, "Ptr*", &fmt := 0) ; 0x4000 = NoWrap
+    DllCall("gdiplus\GdipSetStringFormatAlign", "Ptr", fmt, "Int", align)
     DllCall("gdiplus\GdipSetStringFormatLineAlign", "Ptr", fmt, "Int", 1)
     DllCall("gdiplus\GdipCreateSolidFill", "UInt", argb, "Ptr*", &br := 0)
     rc := Buffer(16)
@@ -720,6 +800,13 @@ KpIcon(G, path, x, y, w, h) {
         DllCall("gdiplus\GdipDrawImageRectI", "Ptr", G, "Ptr", img, "Int", x, "Int", y, "Int", w, "Int", h)
         DllCall("gdiplus\GdipDisposeImage", "Ptr", img)
     }
+}
+
+; Filled circle centered at (cx, cy) with radius r — the unresolved-alert marker.
+KpDot(G, cx, cy, r, argb) {
+    DllCall("gdiplus\GdipCreateSolidFill", "UInt", argb, "Ptr*", &br := 0)
+    DllCall("gdiplus\GdipFillEllipse", "Ptr", G, "Ptr", br, "Float", cx - r, "Float", cy - r, "Float", 2*r, "Float", 2*r)
+    DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
 }
 
 ; Blit a 32bpp ARGB GDI+ bitmap onto a layered window at (x,y) with per-pixel alpha.
@@ -744,6 +831,164 @@ KpBlitLayered(hwnd, pBmp, x, y, w, h) {
     DllCall("DeleteObject", "Ptr", hbm)
     DllCall("DeleteDC", "Ptr", hdcMem)
     DllCall("ReleaseDC", "Ptr", 0, "Ptr", hdcScreen)
+}
+
+; =============================================================================
+; ALERTS (desktop-aware notifications)
+; -----------------------------------------------------------------------------
+; The `alert` skill appends one tab-delimited line per alert to alerts.log:
+;     epoch <TAB> {GUID} <TAB> project <TAB> alerter
+; An alert is "unresolved" until you visit the desktop it fired on. Visiting a
+; desktop stamps a per-desktop watermark (visits.ini): an alert counts as
+; unresolved iff it's not on the current desktop AND its epoch is newer than the
+; watermark for its desktop. The keypad shows a yellow dot on desktops with
+; unresolved alerts and lists recent alerts beside it; clicking a row jumps there.
+; =============================================================================
+
+AlertsFile() => A_AppData "\Sygnal HotPad\alerts.log"
+VisitsFile() => A_AppData "\Sygnal HotPad\visits.ini"
+
+; Seconds since the Unix epoch (UTC), matching what the skill writes.
+NowEpoch() => DateDiff(A_NowUTC, "19700101000000", "Seconds")
+
+; Format a 16-byte COM GUID buffer as "{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
+; (uppercase, braces) — byte-for-byte identical to PowerShell's Guid.ToString("B").
+GuidToStr(buf) {
+    s := "{"
+    s .= Format("{:08X}", NumGet(buf, 0, "UInt"))   "-"
+    s .= Format("{:04X}", NumGet(buf, 4, "UShort"))  "-"
+    s .= Format("{:04X}", NumGet(buf, 6, "UShort"))  "-"
+    s .= Format("{:02X}", NumGet(buf, 8, "UChar"))
+    s .= Format("{:02X}", NumGet(buf, 9, "UChar"))   "-"
+    Loop 6
+        s .= Format("{:02X}", NumGet(buf, 9 + A_Index, "UChar"))
+    return s "}"
+}
+
+; The stable GUID of desktop number n (1-based), via the VD library internals.
+GuidFromDesktopNum(n) {
+    ivd := VD._GetDesktops_Obj().GetAt(n)
+    if (!ivd)
+        return ""
+    buf := Buffer(16, 0)
+    DllCall(VD._vtable(ivd, VD.idx_GetId), "Ptr", ivd, "Ptr", buf)
+    return GuidToStr(buf)
+}
+
+; Map of current "{GUID}" -> desktop number, rebuilt each time (desktops reorder).
+BuildGuidNumMap() {
+    m := Map()
+    Loop VD.getCount()
+        m[GuidFromDesktopNum(A_Index)] := A_Index
+    return m
+}
+
+; --- Visit watermarks (visits.ini: one "{GUID}=epoch" per line) ---
+LoadVisits() {
+    Alerts.Visits := Map()
+    f := VisitsFile()
+    if !FileExist(f)
+        return
+    Loop Read f {
+        eq := InStr(A_LoopReadLine, "=")
+        if (eq < 2)
+            continue
+        guid := Trim(SubStr(A_LoopReadLine, 1, eq - 1))
+        val  := Trim(SubStr(A_LoopReadLine, eq + 1))
+        if (guid != "" && IsInteger(val))
+            Alerts.Visits[guid] := Integer(val)
+    }
+}
+
+SaveVisits() {
+    dir := A_AppData "\Sygnal HotPad"
+    if !DirExist(dir)
+        DirCreate(dir)
+    s := ""
+    for guid, ep in Alerts.Visits
+        s .= guid "=" ep "`n"
+    f := VisitsFile()
+    try FileDelete(f)
+    FileAppend(s, f, "UTF-8")
+}
+
+; Visiting desktop `num` resolves its alerts: stamp its watermark to now.
+MarkVisited(num) {
+    if (!Alerts.LoadedVisits) {
+        LoadVisits()
+        Alerts.LoadedVisits := true
+    }
+    guid := GuidFromDesktopNum(num)
+    if (guid = "")
+        return
+    Alerts.Visits[guid] := NowEpoch()
+    SaveVisits()
+}
+
+; Read alerts.log, classify resolved/unresolved against the visit watermarks and
+; the current desktop, and populate Alerts.List (cap 20, unresolved-then-newest)
+; plus Alerts.UnresByNum (desktop number -> has-unresolved-alert, for the dots).
+LoadAlertsModel(current) {
+    if (!Alerts.LoadedVisits) {
+        LoadVisits()
+        Alerts.LoadedVisits := true
+    }
+    guidNum := BuildGuidNumMap()
+    curGuid := GuidFromDesktopNum(current)
+
+    items := []
+    unres := Map()
+    f := AlertsFile()
+    if FileExist(f) {
+        Loop Read f {
+            if (Trim(A_LoopReadLine) = "")
+                continue
+            p := StrSplit(A_LoopReadLine, "`t")
+            if (p.Length < 4 || !IsInteger(p[1]))
+                continue
+            ep    := Integer(p[1])
+            guid  := p[2]
+            vis   := Alerts.Visits.Has(guid) ? Alerts.Visits[guid] : 0
+            isUnr := (guid != curGuid) && (ep > vis)
+            num   := guidNum.Has(guid) ? guidNum[guid] : 0
+            items.Push({ epoch: ep, guid: guid, project: p[3], alerter: p[4], unresolved: isUnr, num: num })
+            if (isUnr && num > 0)
+                unres[num] := true
+        }
+    }
+
+    SortAlerts(items)   ; unresolved first, then newest first
+
+    list := []
+    for a in items {
+        list.Push(a)
+        if (list.Length >= 20)
+            break
+    }
+    Alerts.List := list
+    Alerts.UnresByNum := unres
+}
+
+; True if alert a should sort before b: unresolved outranks resolved, then newer
+; outranks older.
+AlertBefore(a, b) {
+    if (a.unresolved != b.unresolved)
+        return a.unresolved
+    return a.epoch > b.epoch
+}
+
+; In-place insertion sort (alert counts are small).
+SortAlerts(arr) {
+    Loop arr.Length - 1 {
+        i := A_Index + 1
+        key := arr[i]
+        j := i - 1
+        while (j >= 1 && AlertBefore(key, arr[j])) {
+            arr[j + 1] := arr[j]
+            j--
+        }
+        arr[j + 1] := key
+    }
 }
 
 ; =============================================================================

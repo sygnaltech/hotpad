@@ -6,6 +6,10 @@ param(
     # Defaults to the current working directory (the folder Claude is operating in).
     [string]$Workspace = "",
 
+    # Who raised the alert. For now only Claude, but recorded so the hotpad UI
+    # can show "<project> [ <alerter> ]" and support other alerters later.
+    [string]$Alerter = "Claude",
+
     [string]$Message = ""
 )
 
@@ -115,7 +119,30 @@ if ($ids) {
 }
 
 # ---------------------------------------------------------------------------
-# 7. Report.
+# 7. Record the alert for the hotpad UI.
+#    Append one tab-delimited line to %APPDATA%\Sygnal HotPad\alerts.log:
+#        epoch <TAB> {GUID} <TAB> project <TAB> alerter
+#    The GUID is the stable desktop id (matches what hotpad computes), so the
+#    record survives desktop reordering. hotpad reads this to show the dot +
+#    list and to resolve alerts when the desktop is visited.
+# ---------------------------------------------------------------------------
+if ($guid -ne [Guid]::Empty) {
+    $dir = Join-Path $env:APPDATA "Sygnal HotPad"
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $log = Join-Path $dir "alerts.log"
+
+    $epoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    # Strip tabs/newlines from free-text fields so the delimited format stays intact.
+    $projSafe    = ($leaf    -replace "[\t\r\n]", " ").Trim()
+    $alerterSafe = ($Alerter -replace "[\t\r\n]", " ").Trim()
+    $line = "$epoch`t$guidB`t$projSafe`t$alerterSafe"
+
+    # Append as UTF-8 (no BOM mid-file); Add-Content appends atomically per call.
+    Add-Content -Path $log -Value $line -Encoding UTF8
+}
+
+# ---------------------------------------------------------------------------
+# 8. Report.
 # ---------------------------------------------------------------------------
 $label = if ($name) { "$name" } else { "(unnamed)" }
 $pos   = if ($index) { "Desktop $index of $total" } else { "unknown position" }
