@@ -51,7 +51,7 @@ Double-click **`hotpad.ahk`** — it loads the whole suite into a single tray ic
 - `Ctrl + Win + .` (NumpadDot) — open the **Config** dialog (tabs: **Desktop** to rename the current desktop, **Settings** for keypad size, **Launchers** to assign keys). Also on the tray menu as **Settings** / **Launchers**.
 
 ### Launchers — apps & Chrome (configurable)
-Assign the keypad's operator keys — `Ctrl + Win +` ` + − * / = ( ) Enter` — to launch things. Open the **Config → Launchers** tab and double-click a key:
+Assign the keypad's operator keys — `+ − * / = ( ) Enter`, each prefixed with `Ctrl + Win` — to launch things. Open the **Config → Launchers** tab and double-click a key:
 
 - **Application** — pick (or paste) a program path, with optional arguments.
 - **Chrome** — opens a **new window on the current desktop**; choose a specific profile, or *Ask each time* for a quick profile menu.
