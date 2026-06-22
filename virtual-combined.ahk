@@ -102,7 +102,7 @@ VirtualGrid.GdipToken := gdipTok
 
 ; Load persisted settings, and add a "Settings" entry to the tray right-click menu.
 LoadConfig()
-A_TrayMenu.Insert("1&", "Settings", ShowSettings)
+A_TrayMenu.Insert("1&", "Settings", (*) => ShowHotpadDialog("settings"))
 A_TrayMenu.Insert("2&")
 
 ; The Numpad hotkeys are registered at runtime, so this loop MUST run in the
@@ -142,10 +142,10 @@ return
 ^#z::PinActiveApp()
 ^#x::PinActiveWindow()
 
-; --- Rename current desktop (Ctrl+Win + decimal point) ---
-; NumpadDot = NumLock on, NumpadDel = NumLock off.
-^#NumpadDot:: RenameCurrentDesktop()
-^#NumpadDel:: RenameCurrentDesktop()
+; --- Desktop / Settings dialog (Ctrl+Win + decimal point) ---
+; Opens on the Desktop (rename) tab. NumpadDot = NumLock on, NumpadDel = off.
+^#NumpadDot:: ShowHotpadDialog("desktop")
+^#NumpadDel:: ShowHotpadDialog("desktop")
 
 ; --- Go back to the previous desktop (Ctrl+Win + Backspace) ---
 ; No `~`, so the keypress is consumed (suppresses the default Windows action).
@@ -412,41 +412,8 @@ CheckChord() {
         HideGrid()
 }
 
-RenameCurrentDesktop() {
-    n := VD.getCurrentDesktopNum()
-    VirtualGrid.Naming := true
-    HideGrid() ; get the HUD out of the way of the dialog
-    ShowRenameDialog(n, DesktopName(n))
-}
-
-; Dark, keypad-styled rename dialog (replaces the default InputBox).
-ShowRenameDialog(n, currentName) {
-    dlg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Rename desktop " n)
-    dlg.BackColor := "2B2B2B"
-    dlg.MarginX := 18, dlg.MarginY := 16
-    dlg.SetFont("s10", "Segoe UI")
-    dlg.AddText("cD6D6D6", "Name for desktop " n ":")
-    edit := dlg.AddEdit("xm y+8 w300 r1 Background3A3A3A cFFFFFF -E0x200")
-    edit.Value := currentName
-    dlg.SetFont("s9")
-    save := dlg.AddButton("xm y+16 w95 Default", "Save")
-    cancel := dlg.AddButton("x+10 w95", "Cancel")
-    save.OnEvent("Click", (*) => RenameFinish(dlg, edit.Value, n, false))
-    cancel.OnEvent("Click", (*) => RenameFinish(dlg, "", n, true))
-    dlg.OnEvent("Escape", (*) => RenameFinish(dlg, "", n, true))
-    dlg.OnEvent("Close", (*) => RenameFinish(dlg, "", n, true))
-    dlg.Show("AutoSize Center")
-    edit.Focus()
-    try SendMessage(0xB1, 0, -1, edit) ; EM_SETSEL -> select all
-}
-
-RenameFinish(dlg, value, n, cancelled) {
-    dlg.Destroy()
-    VirtualGrid.Naming := false
-    ; Next time the keypad shows it rebuilds (HideGrid reset ShownFor), so a new name appears.
-    if (!cancelled)
-        VD.setNameToDesktopNum(value, n)
-}
+; Backed by the combined dialog now (kept as a named entry point).
+RenameCurrentDesktop() => ShowHotpadDialog("desktop")
 
 ; The desktop's custom name, or "" if it has none (so we don't print a redundant
 ; "Desktop N" under the number).
@@ -662,22 +629,92 @@ SaveScale(scale) {
     VirtualGrid.ShownFor := -1 ; force a re-render at the new scale next time the keypad shows
 }
 
-; Tray > Settings window. Dark, matches the keypad/rename styling.
-ShowSettings(*) {
-    sg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Sygnal HotPad - Settings")
-    sg.BackColor := "2B2B2B"
-    sg.MarginX := 18, sg.MarginY := 16
-    sg.SetFont("s10 Bold", "Segoe UI")
-    sg.AddText("cD6D6D6", "Keypad size")
-    sg.SetFont("s10 Norm", "Segoe UI")
-    rS := sg.AddRadio("xm y+10 cE0E0E0" (VirtualGrid.Scale < 1.25 ? " Checked" : ""), "Small  (100%)")
-    rM := sg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.25 && VirtualGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
-    rL := sg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
-    sg.SetFont("s9")
-    save := sg.AddButton("xm y+18 w95 Default", "Save")
-    cancel := sg.AddButton("x+10 w95", "Cancel")
-    save.OnEvent("Click", (*) => (SaveScale(rS.Value ? 1.0 : rM.Value ? 1.5 : 2.0), sg.Destroy()))
-    cancel.OnEvent("Click", (*) => sg.Destroy())
-    sg.OnEvent("Escape", (*) => sg.Destroy())
-    sg.Show("AutoSize Center")
+; Combined Desktop + Settings dialog. Dark, with custom (on-theme) tab headers.
+; startTab = "desktop" (rename the current desktop) | "settings" (system settings).
+; Opened from Ctrl+Win+NumpadDot (Desktop tab) and the tray menu (Settings tab).
+; A single Save applies BOTH the desktop name and the settings.
+ShowHotpadDialog(startTab := "desktop") {
+    static gOpen := 0
+    if (gOpen && WinExist("ahk_id " gOpen)) {   ; already open -> just surface it
+        WinActivate("ahk_id " gOpen)
+        return
+    }
+
+    n := VD.getCurrentDesktopNum()
+    VirtualGrid.Naming := true   ; suppress the HUD while the dialog is up
+    HideGrid()
+
+    dlg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Sygnal HotPad")
+    dlg.BackColor := "2B2B2B"
+    dlg.MarginX := 16, dlg.MarginY := 14
+
+    ; Custom dark tab strip (selected = blue; text stays white for both so we only
+    ; have to toggle the background, which Opt()+Redraw handles cleanly).
+    dlg.SetFont("s10 Bold", "Segoe UI")
+    tabW := 120, tabH := 30
+    hD := dlg.AddText("xm ym w" tabW " h" tabH " Center 0x200 cFFFFFF Background3A3A3A", "Desktop")
+    hS := dlg.AddText("x+2 yp w" tabW " h" tabH " Center 0x200 cFFFFFF Background3A3A3A", "Settings")
+    dlg.SetFont("s10 Norm")
+
+    cy := tabH + 28   ; top of the panel content, just below the tab strip
+
+    ; --- Desktop panel: rename the current desktop ---
+    lblD := dlg.AddText("xm y" cy " cD6D6D6", "Name for desktop " n ":")
+    edit := dlg.AddEdit("xm y+8 w300 r1 Background3A3A3A cFFFFFF -E0x200")
+    edit.Value := DesktopName(n)
+
+    ; --- Settings panel: system-level hotpad settings (overlaps the Desktop panel;
+    ; the two are toggled by tab). Add new system settings here. ---
+    dlg.SetFont("s10 Bold")
+    lblS := dlg.AddText("xm y" cy " cD6D6D6", "Keypad size")
+    dlg.SetFont("s10 Norm")
+    rS := dlg.AddRadio("xm y+10 cE0E0E0" (VirtualGrid.Scale < 1.25 ? " Checked" : ""), "Small  (100%)")
+    rM := dlg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.25 && VirtualGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
+    rL := dlg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
+
+    ; --- shared buttons, below the taller (settings) panel ---
+    dlg.SetFont("s9")
+    save := dlg.AddButton("xm y" (cy + 132) " w95 Default", "Save")
+    cancel := dlg.AddButton("x+10 w95", "Cancel")
+    dlg.SetFont("s10 Norm")
+
+    desktopCtrls := [lblD, edit]
+    settingsCtrls := [lblS, rS, rM, rL]
+
+    SwitchTab(which) {
+        isD := (which != "settings")
+        for c in desktopCtrls
+            c.Visible := isD
+        for c in settingsCtrls
+            c.Visible := !isD
+        hD.Opt(isD ? "Background1E90FF" : "Background3A3A3A")
+        hS.Opt(isD ? "Background3A3A3A" : "Background1E90FF")
+        hD.Redraw(), hS.Redraw()
+        if (isD) {
+            edit.Focus()
+            try SendMessage(0xB1, 0, -1, edit)   ; EM_SETSEL -> select all
+        }
+    }
+
+    Finish(savep) {
+        nm := edit.Value, sc := rS.Value ? 1.0 : rM.Value ? 1.5 : 2.0
+        gOpen := 0
+        dlg.Destroy()
+        VirtualGrid.Naming := false   ; HUD rebuilds on next show (ShownFor was reset)
+        if (savep) {
+            VD.setNameToDesktopNum(nm, n)
+            SaveScale(sc)
+        }
+    }
+
+    hD.OnEvent("Click", (*) => SwitchTab("desktop"))
+    hS.OnEvent("Click", (*) => SwitchTab("settings"))
+    save.OnEvent("Click", (*) => Finish(true))
+    cancel.OnEvent("Click", (*) => Finish(false))
+    dlg.OnEvent("Escape", (*) => Finish(false))
+    dlg.OnEvent("Close", (*) => Finish(false))
+
+    dlg.Show("AutoSize Center")   ; sized for both panels (all controls visible here)
+    SwitchTab(startTab)            ; then reveal just the requested tab
+    gOpen := dlg.Hwnd
 }
