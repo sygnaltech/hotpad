@@ -13,8 +13,15 @@ All scripts are written in AutoHotKey v2.0 and depend on the [VD.ahk](https://gi
 The virtual-desktop functionality is now consolidated into a **single** script, [VD-combined.ahk](VD-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `VD-icon.ico`, with the tray tooltip "Virtual Desktop Suite").
 
 - **[startup.ahk](startup.ahk)** is the entry point. It `#Include`s `VD-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
-- **[VD-combined.ahk](VD-combined.ahk)** merges what used to be four separate scripts: `VD-navigate-wraparound.ahk`, `VD-move-window.ahk`, `VD-numpad-desktops.ahk`, and `VD-pin-app.ahk`. It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
-- The four original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `VD-move-window-with-desktop.ahk` was merged into `VD-move-window.ahk` and removed.
+- **[VD-combined.ahk](VD-combined.ahk)** merges what used to be five separate scripts: `VD-navigate-wraparound.ahk`, `VD-move-window.ahk`, `VD-numpad-desktops.ahk`, `VD-pin-app.ahk`, and `VD-grid.ahk` (the preview HUD + desktop rename). It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
+- The original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `VD-move-window-with-desktop.ahk` was merged into `VD-move-window.ahk` and removed.
+
+#### Preview grid + desktop rename (in VD-combined.ahk)
+
+Two features live only in the consolidated script (their original was `VD-grid.ahk`):
+
+- **Preview grid** — holding `Ctrl+Win` shows a numpad-layout 3×3 HUD of desktops 1-9 (1 = bottom-left, 9 = top-right), centered on the **primary** monitor, highlighting the current desktop and showing each desktop's name. Driven by a lightweight `SetTimer CheckChord, 75` poll (more robust than hooking the modifier keys) and a `class VDGrid` holding its config + state. The HUD window is `WS_EX_NOACTIVATE` so it never steals focus. It is purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
+- **Desktop rename** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off) opens an InputBox to name the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and also appear in Task View — no separate config file is used.
 
 The per-script sections below document the original scripts; their logic is what `VD-combined.ahk` consolidates.
 
@@ -359,11 +366,12 @@ Enable debugging output:
 | File | Type | Purpose | Dependencies |
 |------|------|---------|--------------|
 | [startup.ahk](startup.ahk) | Entry point | Loads VD-combined in-process; launches future standalone scripts | VD-combined.ahk |
-| [VD-combined.ahk](VD-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin, one tray icon | VD.ahk, VD-icon.ico |
+| [VD-combined.ahk](VD-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview grid + rename, one tray icon | VD.ahk, VD-icon.ico |
 | [VD-navigate-wraparound.ahk](VD-navigate-wraparound.ahk) | Standalone (merged into combined) | Switch desktop with wrap-around | VD.ahk |
 | [VD-move-window.ahk](VD-move-window.ahk) | Standalone (merged into combined) | Move window ± follow (arrows) | VD.ahk |
 | [VD-numpad-desktops.ahk](VD-numpad-desktops.ahk) | Standalone (merged into combined) | Absolute desktop access 1–9 (navigate/move) | VD.ahk |
 | [VD-pin-app.ahk](VD-pin-app.ahk) | Standalone (merged into combined) | Pin app/window to all desktops | VD.ahk |
+| [VD-grid.ahk](VD-grid.ahk) | Standalone (merged into combined) | Ctrl+Win preview HUD + desktop rename | VD.ahk |
 | [AppSpecificTabSwitcher.ahk](AppSpecificTabSwitcher.ahk) | Standalone (not in suite) | App window cycling | None |
 | [VD-cascade.ahk](VD-cascade.ahk) | Standalone (not in suite) | Cascade/tile windows | VD.ahk, _WinArrange.ahk |
 | [_WinArrange.ahk](_WinArrange.ahk) | Library | Windows API wrapper | None |
@@ -373,7 +381,7 @@ Enable debugging output:
 
 ## Hotkey Reference Table
 
-> The Desktop Navigation, Window Movement, Numpad, and Pinning hotkeys below are all provided by the consolidated [VD-combined.ahk](VD-combined.ahk).
+> The Desktop Navigation, Window Movement, Numpad, Pinning, and Preview/Rename hotkeys below are all provided by the consolidated [VD-combined.ahk](VD-combined.ahk).
 
 ### Desktop Navigation
 
@@ -404,6 +412,13 @@ Enable debugging output:
 |--------|--------|
 | `Ctrl + Win + Z` | Pin/unpin active app (all its windows) to every desktop |
 | `Ctrl + Win + X` | Pin/unpin only the active window to every desktop |
+
+### Preview grid & rename
+
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl + Win` (hold) | Show numpad-layout 3×3 preview of desktops 1–9 on the primary monitor (current highlighted, names shown) |
+| `Ctrl + Win + NumpadDot` | Rename the current desktop (native Win11 name; also `NumpadDel` for NumLock-off) |
 
 ### Window Arrangement
 
