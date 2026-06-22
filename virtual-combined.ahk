@@ -153,6 +153,14 @@ return
 ; find it and change the key name below.
 ^#Backspace:: GoBackDesktop()
 
+; --- Launch Chrome on the CURRENT desktop (Ctrl+Win + /) ---
+; Pops a small profile menu, then opens the chosen profile in a NEW window on the
+; current virtual desktop. Bound on both the numpad divide (matches the "/" key on
+; the preview keypad HUD) and the main-row slash. No `~`, so the slash isn't typed.
+; See ChromeMenu() for why we use our own menu instead of Chrome's profile picker.
+^#/::        ChromeMenu()
+^#NumpadDiv:: ChromeMenu()
+
 ; =============================================================================
 ; CLOSURE FACTORIES (for the runtime-registered Numpad hotkeys)
 ; Each call creates a fresh scope so the captured desktop number is correct
@@ -161,6 +169,71 @@ return
 NavigateAbsoluteClosure(n)   => (*) => NavigateAbsolute(n)
 MoveAbsoluteFollowClosure(n) => (*) => MoveActiveAbsolute(n, true)
 MoveAbsoluteStayClosure(n)   => (*) => MoveActiveAbsolute(n, false)
+
+; =============================================================================
+; APP LAUNCH
+; =============================================================================
+
+; Why a menu instead of Chrome's own picker:
+; Launching `chrome.exe --new-window` with NO profile shows Chrome's profile
+; picker. Picking a profile there does NOT honor --new-window — Chrome activates
+; that profile's existing window (yanking you to whatever virtual desktop it lives
+; on) and just adds a tab. So we pick the profile ourselves and launch with it
+; pinned: `chrome.exe --profile-directory="Profile X" --new-window`. With the
+; profile specified the picker never appears and --new-window is honored, so a
+; brand-new window opens on the CURRENT desktop.
+;
+; The menu lists each Chrome profile by its folder name (Default, Profile 1, …),
+; read live from disk so it works as-is on any machine.
+
+; Build the profile menu once (profiles rarely change; restart to refresh).
+ChromeMenu() {
+    static m := BuildChromeMenu()
+    m.Show()
+}
+
+BuildChromeMenu() {
+    m := Menu()
+    dir := EnvGet("LocalAppData") "\Google\Chrome\User Data"
+    count := 0
+    ; Read the live profile folders so the menu stays in sync with Chrome.
+    Loop Files dir "\*", "D" {
+        if (A_LoopFileName = "Default" || RegExMatch(A_LoopFileName, "^Profile \d+$")) {
+            m.Add(A_LoopFileName, ChromeProfileClosure(A_LoopFileName))
+            count++
+        }
+    }
+    if (count = 0)   ; no profiles found -> a single "new window" entry
+        m.Add("New Chrome window", ChromeProfileClosure(""))
+    return m
+}
+
+ChromeProfileClosure(dir) => (*) => LaunchChromeProfile(dir)
+
+; Open `dir`'s profile in a NEW window on the current desktop (blank dir = let
+; Chrome use its default/last profile, still in a new window).
+LaunchChromeProfile(dir) {
+    exe := ChromePath()
+    if (exe = "") {
+        MsgBox "Couldn't find Chrome — is it installed?", "Sygnal HotPad", "Icon!"
+        return
+    }
+    prof := (dir = "") ? "" : '--profile-directory="' dir '" '
+    Run '"' exe '" ' prof '--new-window'
+}
+
+; Resolve chrome.exe: App Paths registration first (robust, even off PATH), then
+; the usual install locations. Returns "" if not found.
+ChromePath() {
+    try
+        return RegRead("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe")
+    for path in [ A_ProgramFiles "\Google\Chrome\Application\chrome.exe"
+                , EnvGet("ProgramFiles(x86)") "\Google\Chrome\Application\chrome.exe"
+                , EnvGet("LocalAppData") "\Google\Chrome\Application\chrome.exe" ]
+        if FileExist(path)
+            return path
+    return ""
+}
 
 ; =============================================================================
 ; NAVIGATION
