@@ -50,24 +50,26 @@ try {
 ; Held in a class so it's reliably accessible from every function. Defined before
 ; the auto-execute body so its static init isn't flagged as unreachable.
 class VDGrid {
-    ; Appearance - tweak here.
-    static CellW := 104         ; cell width (px)  - wider to fit names
-    static CellH := 72          ; cell height (px)
-    static NumH  := 46          ; height of the number area within a cell
-    static Gap   := 8           ; gap between cells
-    static Pad   := 12          ; window padding
-    static ColBg      := "1A1A1A"  ; window background
-    static ColCurrent := "1E90FF"  ; current desktop (matches tray icon blue)
-    static ColExists  := "3A3A3A"  ; an existing, non-current desktop
-    static ColMissing := "222222"  ; a desktop that doesn't exist yet
-    static TxtCurrent := "FFFFFF"
-    static TxtExists  := "DDDDDD"
-    static TxtMissing := "555555"
+    ; Keypad geometry (px) - tweak here.
+    static Pad  := 18           ; outer padding
+    static Cell := 80           ; key size
+    static Gap  := 12           ; gap between keys
+
+    ; Colors (ARGB 0xAARRGGBB).
+    static ColBody    := 0xFF3A3A3A  ; body + key fill
+    static ColStroke  := 0xFF808080  ; key border
+    static ColCur     := 0xFF1E90FF  ; current desktop key fill (tray-icon blue)
+    static ColCurStrk := 0xFF5CB0FF  ; current desktop key border
+    static ColTxt     := 0xFFD6D6D6  ; key glyph / number
+    static ColCurTxt  := 0xFFFFFFFF
+    static ColName    := 0xFF9AA0A6  ; desktop name
+    static ColCurName := 0xFFEAF4FF
 
     ; Runtime state.
-    static Hud := 0             ; the Gui object while shown, else 0
-    static ShownFor := -1       ; which desktop the shown grid highlights
+    static Hud := 0             ; the layered Gui while created (kept hidden when not shown)
+    static ShownFor := -1       ; which desktop the shown keypad highlights
     static Naming := false      ; true while the rename box is open (suppresses the HUD)
+    static GdipToken := 0       ; GDI+ token (started once at init)
 }
 
 ; ---- Init (auto-execute section) -------------------------------------------
@@ -79,13 +81,22 @@ A_IconTip := "Virtual Desktop Suite"
 
 VD.createUntil(3) ; Create until we have at least 3 virtual desktops
 
-; The Numpad1..9 hotkeys are registered at runtime, so this loop MUST run in the
+; Start GDI+ once for the preview-keypad renderer.
+DllCall("LoadLibrary", "Str", "gdiplus")
+gdipSi := Buffer(A_PtrSize = 8 ? 24 : 16, 0)
+NumPut("UInt", 1, gdipSi, 0)
+DllCall("gdiplus\GdiplusStartup", "Ptr*", &gdipTok := 0, "Ptr", gdipSi, "Ptr", 0)
+VDGrid.GdipToken := gdipTok
+
+; The Numpad hotkeys are registered at runtime, so this loop MUST run in the
 ; auto-execute section (before the first `return`/hotkey label) or they won't bind.
-Loop 9 {
-    n := A_Index
-    Hotkey "^#Numpad" n, NavigateAbsoluteClosure(n)    ; Ctrl+Win+N       -> switch to desktop N
-    Hotkey "^!#Numpad" n, MoveAbsoluteFollowClosure(n) ; Ctrl+Alt+Win+N   -> move window to N + follow
-    Hotkey "!#Numpad" n, MoveAbsoluteStayClosure(n)    ; Alt+Win+N        -> move window to N, stay
+; Numpad1..9 -> desktops 1..9; Numpad0 -> desktop 10.
+Loop 10 {
+    n := A_Index = 10 ? 0 : A_Index   ; the key digit (0 for the 10th)
+    d := A_Index                      ; the desktop number (1..10)
+    Hotkey "^#Numpad" n, NavigateAbsoluteClosure(d)    ; Ctrl+Win+N       -> switch to desktop d
+    Hotkey "^!#Numpad" n, MoveAbsoluteFollowClosure(d) ; Ctrl+Alt+Win+N   -> move window to d + follow
+    Hotkey "!#Numpad" n, MoveAbsoluteStayClosure(d)    ; Alt+Win+N        -> move window to d, stay
 }
 
 ; Poll for the Ctrl+Win chord that shows the preview grid (robust, and never
@@ -312,63 +323,178 @@ ShowOrUpdateGrid() {
     if (VDGrid.Hud && VDGrid.ShownFor = current)
         return
 
-    if VDGrid.Hud
-        VDGrid.Hud.Destroy()
+    kpW := VDGrid.Pad*2 + 4*VDGrid.Cell + 3*VDGrid.Gap
+    kpH := VDGrid.Pad*2 + 5*VDGrid.Cell + 4*VDGrid.Gap
 
-    count := VD.getCount()
+    pBmp := RenderKeypad(current, kpW, kpH)
 
-    g := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x08000000") ; E0x08000000 = WS_EX_NOACTIVATE
-    g.BackColor := VDGrid.ColBg
-
-    ; Rows top->bottom hold 7-9, 4-6, 1-3 so 1 lands bottom-left, 9 top-right.
-    Loop 3 {
-        r := A_Index - 1
-        Loop 3 {
-            c := A_Index - 1
-            n := (2 - r) * 3 + (c + 1)
-
-            if (n = current) {
-                bg := VDGrid.ColCurrent
-                fg := VDGrid.TxtCurrent
-            } else if (n <= count) {
-                bg := VDGrid.ColExists
-                fg := VDGrid.TxtExists
-            } else {
-                bg := VDGrid.ColMissing
-                fg := VDGrid.TxtMissing
-            }
-
-            x := VDGrid.Pad + c * (VDGrid.CellW + VDGrid.Gap)
-            y := VDGrid.Pad + r * (VDGrid.CellH + VDGrid.Gap)
-
-            ; Number (top portion of the cell).
-            g.SetFont("s20 Bold", "Segoe UI")
-            g.Add("Text", Format("x{} y{} w{} h{} Center +0x200 Background{} c{}", x, y, VDGrid.CellW, VDGrid.NumH, bg, fg), n)
-
-            ; Name (bottom strip). Only existing desktops; ellipsis if too long.
-            name := (n <= count) ? DesktopName(n) : ""
-            g.SetFont("s8 Norm", "Segoe UI")
-            g.Add("Text", Format("x{} y{} w{} h{} Center +0x4280 Background{} c{}", x, y + VDGrid.NumH, VDGrid.CellW, VDGrid.CellH - VDGrid.NumH, bg, fg), name)
-        }
+    ; Create the layered, no-activate, always-on-top window once; reuse it after.
+    if !VDGrid.Hud {
+        g := Gui("-Caption +AlwaysOnTop +ToolWindow +E0x80000 +E0x08000000") ; 0x80000=WS_EX_LAYERED, 0x08000000=WS_EX_NOACTIVATE
+        g.Show("NoActivate Hide")
+        VDGrid.Hud := g
     }
 
-    w := VDGrid.Pad * 2 + 3 * VDGrid.CellW + 2 * VDGrid.Gap
-    h := VDGrid.Pad * 2 + 3 * VDGrid.CellH + 2 * VDGrid.Gap
-
-    ; Center on the primary monitor.
     MonitorGet(MonitorGetPrimary(), &mLeft, &mTop, &mRight, &mBottom)
-    px := mLeft + ((mRight - mLeft) - w) // 2
-    py := mTop + ((mBottom - mTop) - h) // 2
-    g.Show(Format("NoActivate x{} y{} w{} h{}", px, py, w, h))
+    px := mLeft + ((mRight - mLeft) - kpW) // 2
+    py := mTop + ((mBottom - mTop) - kpH) // 2
 
-    VDGrid.Hud := g
+    KpBlitLayered(VDGrid.Hud.Hwnd, pBmp, px, py, kpW, kpH)
+    DllCall("ShowWindow", "Ptr", VDGrid.Hud.Hwnd, "Int", 8) ; SW_SHOWNA = show without activating
+    DllCall("gdiplus\GdipDisposeImage", "Ptr", pBmp)
+
     VDGrid.ShownFor := current
 }
 
 HideGrid() {
     if !VDGrid.Hud
         return
-    VDGrid.Hud.Destroy()
-    VDGrid.Hud := 0
+    DllCall("ShowWindow", "Ptr", VDGrid.Hud.Hwnd, "Int", 0) ; SW_HIDE
     VDGrid.ShownFor := -1
+}
+
+; ---- Keypad rendering (GDI+) ------------------------------------------------
+; Numpad layout. k=kind: digit|glyph|text|icon. d=desktop (digit). lbl overrides
+; the drawn label (the 0 key shows "0" but is desktop 10). c/r=col/row, cs/rs=spans.
+KpLayout() {
+    return [
+        {k:"glyph", t:"=",        c:0, r:0},
+        {k:"glyph", t:"/",        c:1, r:0},
+        {k:"glyph", t:"*",        c:2, r:0},
+        {k:"icon",  ic:"assets\keys\bs.png", c:3, r:0},
+        {k:"digit", d:7,          c:0, r:1},
+        {k:"digit", d:8,          c:1, r:1},
+        {k:"digit", d:9,          c:2, r:1},
+        {k:"glyph", t:"−", sz:34,  c:3, r:1},
+        {k:"digit", d:4,          c:0, r:2},
+        {k:"digit", d:5,          c:1, r:2},
+        {k:"digit", d:6,          c:2, r:2},
+        {k:"glyph", t:"+", sz:34,  c:3, r:2},
+        {k:"digit", d:1,          c:0, r:3},
+        {k:"digit", d:2,          c:1, r:3},
+        {k:"digit", d:3,          c:2, r:3},
+        {k:"text",  t:"Enter", sz:20, c:3, r:3, rs:2},
+        {k:"digit", d:10, lbl:"0", c:0, r:4, cs:2},
+        {k:"glyph", t:".", sz:34,  c:2, r:4},
+    ]
+}
+
+RenderKeypad(current, kpW, kpH) {
+    count := VD.getCount()
+    pad := VDGrid.Pad, cell := VDGrid.Cell, gap := VDGrid.Gap
+
+    DllCall("gdiplus\GdipCreateBitmapFromScan0", "Int", kpW, "Int", kpH, "Int", 0, "Int", 0x26200A, "Ptr", 0, "Ptr*", &pBmp := 0)
+    DllCall("gdiplus\GdipGetImageGraphicsContext", "Ptr", pBmp, "Ptr*", &G := 0)
+    DllCall("gdiplus\GdipSetSmoothingMode", "Ptr", G, "Int", 4)
+    DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", G, "Int", 4)
+    DllCall("gdiplus\GdipSetInterpolationMode", "Ptr", G, "Int", 7)
+
+    KpFill(G, 0, 0, kpW, kpH, 22, VDGrid.ColBody)
+
+    for kd in KpLayout() {
+        cs := kd.HasOwnProp("cs") ? kd.cs : 1
+        rs := kd.HasOwnProp("rs") ? kd.rs : 1
+        kx := pad + kd.c * (cell + gap)
+        ky := pad + kd.r * (cell + gap)
+        kw := cell + (cs - 1) * (cell + gap)
+        kh := cell + (rs - 1) * (cell + gap)
+
+        isCur := (kd.k = "digit" && kd.d = current)
+        KpFill(G, kx, ky, kw, kh, 10, isCur ? VDGrid.ColCur : VDGrid.ColBody)
+        KpStroke(G, kx, ky, kw, kh, 10, isCur ? VDGrid.ColCurStrk : VDGrid.ColStroke, 1.5)
+
+        if (kd.k = "digit") {
+            nm := (kd.d <= count) ? DesktopName(kd.d) : ""
+            txtCol := isCur ? VDGrid.ColCurTxt : VDGrid.ColTxt
+            lbl := kd.HasOwnProp("lbl") ? kd.lbl : kd.d
+            ; Number always sits in the upper area, name slot reserved below.
+            KpText(G, lbl, kx, ky + 6, kw, kh - 30, 30, txtCol, true)
+            if (nm != "")
+                KpText(G, nm, kx, ky + kh - 30, kw, 24, 12, isCur ? VDGrid.ColCurName : VDGrid.ColName)
+        } else if (kd.k = "glyph" || kd.k = "text") {
+            sz := kd.HasOwnProp("sz") ? kd.sz : 30
+            KpText(G, kd.t, kx, ky, kw, kh, sz, VDGrid.ColTxt, kd.k != "text")
+        } else if (kd.k = "icon") {
+            isz := 40
+            KpIcon(G, A_ScriptDir "\" kd.ic, kx + (kw - isz)//2, ky + (kh - isz)//2, isz, isz)
+        }
+    }
+
+    DllCall("gdiplus\GdipDeleteGraphics", "Ptr", G)
+    return pBmp
+}
+
+KpRoundedPath(x, y, w, h, r) {
+    d := r * 2
+    DllCall("gdiplus\GdipCreatePath", "Int", 0, "Ptr*", &path := 0)
+    DllCall("gdiplus\GdipAddPathArc", "Ptr", path, "Float", x,     "Float", y,     "Float", d, "Float", d, "Float", 180, "Float", 90)
+    DllCall("gdiplus\GdipAddPathArc", "Ptr", path, "Float", x+w-d, "Float", y,     "Float", d, "Float", d, "Float", 270, "Float", 90)
+    DllCall("gdiplus\GdipAddPathArc", "Ptr", path, "Float", x+w-d, "Float", y+h-d, "Float", d, "Float", d, "Float", 0,   "Float", 90)
+    DllCall("gdiplus\GdipAddPathArc", "Ptr", path, "Float", x,     "Float", y+h-d, "Float", d, "Float", d, "Float", 90,  "Float", 90)
+    DllCall("gdiplus\GdipClosePathFigure", "Ptr", path)
+    return path
+}
+
+KpFill(G, x, y, w, h, r, argb) {
+    path := KpRoundedPath(x, y, w, h, r)
+    DllCall("gdiplus\GdipCreateSolidFill", "UInt", argb, "Ptr*", &br := 0)
+    DllCall("gdiplus\GdipFillPath", "Ptr", G, "Ptr", br, "Ptr", path)
+    DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
+    DllCall("gdiplus\GdipDeletePath", "Ptr", path)
+}
+
+KpStroke(G, x, y, w, h, r, argb, width) {
+    path := KpRoundedPath(x, y, w, h, r)
+    DllCall("gdiplus\GdipCreatePen1", "UInt", argb, "Float", width, "Int", 2, "Ptr*", &pen := 0)
+    DllCall("gdiplus\GdipDrawPath", "Ptr", G, "Ptr", pen, "Ptr", path)
+    DllCall("gdiplus\GdipDeletePen", "Ptr", pen)
+    DllCall("gdiplus\GdipDeletePath", "Ptr", path)
+}
+
+KpText(G, str, x, y, w, h, size, argb, bold := false) {
+    DllCall("gdiplus\GdipCreateFontFamilyFromName", "Str", "Segoe UI", "Ptr", 0, "Ptr*", &fam := 0)
+    DllCall("gdiplus\GdipCreateFont", "Ptr", fam, "Float", size, "Int", bold ? 1 : 0, "Int", 2, "Ptr*", &font := 0)
+    DllCall("gdiplus\GdipCreateStringFormat", "Int", 0, "Int", 0, "Ptr*", &fmt := 0)
+    DllCall("gdiplus\GdipSetStringFormatAlign", "Ptr", fmt, "Int", 1)
+    DllCall("gdiplus\GdipSetStringFormatLineAlign", "Ptr", fmt, "Int", 1)
+    DllCall("gdiplus\GdipCreateSolidFill", "UInt", argb, "Ptr*", &br := 0)
+    rc := Buffer(16)
+    NumPut("Float", x, rc, 0), NumPut("Float", y, rc, 4), NumPut("Float", w, rc, 8), NumPut("Float", h, rc, 12)
+    DllCall("gdiplus\GdipDrawString", "Ptr", G, "Str", String(str), "Int", -1, "Ptr", font, "Ptr", rc, "Ptr", fmt, "Ptr", br)
+    DllCall("gdiplus\GdipDeleteBrush", "Ptr", br)
+    DllCall("gdiplus\GdipDeleteStringFormat", "Ptr", fmt)
+    DllCall("gdiplus\GdipDeleteFont", "Ptr", font)
+    DllCall("gdiplus\GdipDeleteFontFamily", "Ptr", fam)
+}
+
+KpIcon(G, path, x, y, w, h) {
+    DllCall("gdiplus\GdipCreateBitmapFromFile", "Str", path, "Ptr*", &img := 0)
+    if img {
+        DllCall("gdiplus\GdipDrawImageRectI", "Ptr", G, "Ptr", img, "Int", x, "Int", y, "Int", w, "Int", h)
+        DllCall("gdiplus\GdipDisposeImage", "Ptr", img)
+    }
+}
+
+; Blit a 32bpp ARGB GDI+ bitmap onto a layered window at (x,y) with per-pixel alpha.
+KpBlitLayered(hwnd, pBmp, x, y, w, h) {
+    hdcScreen := DllCall("GetDC", "Ptr", 0, "Ptr")
+    hdcMem := DllCall("CreateCompatibleDC", "Ptr", hdcScreen, "Ptr")
+    DllCall("gdiplus\GdipCreateHBITMAPFromBitmap", "Ptr", pBmp, "Ptr*", &hbm := 0, "UInt", 0x00000000)
+    oldBm := DllCall("SelectObject", "Ptr", hdcMem, "Ptr", hbm, "Ptr")
+
+    ptDst := Buffer(8), NumPut("Int", x, ptDst, 0), NumPut("Int", y, ptDst, 4)
+    size  := Buffer(8), NumPut("Int", w, size, 0), NumPut("Int", h, size, 4)
+    ptSrc := Buffer(8, 0)
+    blend := Buffer(4, 0)
+    NumPut("UChar", 0,   blend, 0) ; BlendOp = AC_SRC_OVER
+    NumPut("UChar", 0,   blend, 1) ; BlendFlags
+    NumPut("UChar", 255, blend, 2) ; SourceConstantAlpha
+    NumPut("UChar", 1,   blend, 3) ; AlphaFormat = AC_SRC_ALPHA
+
+    DllCall("UpdateLayeredWindow", "Ptr", hwnd, "Ptr", hdcScreen, "Ptr", ptDst, "Ptr", size, "Ptr", hdcMem, "Ptr", ptSrc, "UInt", 0, "Ptr", blend, "UInt", 2) ; ULW_ALPHA
+
+    DllCall("SelectObject", "Ptr", hdcMem, "Ptr", oldBm)
+    DllCall("DeleteObject", "Ptr", hbm)
+    DllCall("DeleteDC", "Ptr", hdcMem)
+    DllCall("ReleaseDC", "Ptr", 0, "Ptr", hdcScreen)
 }
