@@ -42,7 +42,7 @@ That's it — the VD.ahk library is already bundled in `lib/`, so there is no se
 
 ## Running the Script
 
-Double-click **`startup.ahk`**. That loads the whole virtual-desktop suite into a single tray icon. All the hotkeys below (navigate, move, numpad, pin, preview grid, rename) are then live.
+Double-click **`startup.ahk`**. That loads the whole virtual-desktop suite into a single tray icon. All the hotkeys below (navigate, move, numpad, pin, preview keypad, rename) are then live.
 
 Optionally, also double-click the standalone extras if you want them:
 
@@ -70,28 +70,30 @@ If you get any errors when you run the script, the most likely cause is;
 
 ## Usage
 
-These hotkeys come from the **suite** (`startup.ahk` → `VD-combined.ahk`). The numpad hotkeys assume **NumLock is ON** (they use the digit keys `Numpad1`–`Numpad9`).
+These hotkeys come from the **suite** (`startup.ahk` → `VD-combined.ahk`). The numpad hotkeys assume **NumLock is ON** (they use the digit keys `Numpad0`–`Numpad9`, where `Numpad0` = desktop 10).
 
 ### Navigating desktops
 
  - `Ctrl + Win + Left` / `Right`: Switch to the previous / next desktop (wraps around)
  - `Ctrl + Win + Numpad1…9`: Jump straight to desktop 1–9 (creates it if it doesn't exist)
+ - `Ctrl + Win + Numpad0`: Jump to desktop 10
 
 ### Moving the active window
 
  - `Ctrl + Alt + Win + Left` / `Right`: Move window to the previous / next desktop **and follow it** (alias: `Ctrl + Win + Shift + Left/Right`)
- - `Ctrl + Alt + Win + Numpad1…9`: Move window to desktop 1–9 and follow it
- - `Alt + Win + Left` / `Right` (or `Numpad1…9`): Move window to that desktop but **stay** where you are
+ - `Ctrl + Alt + Win + Numpad0…9`: Move window to that desktop (1–10) and follow it
+ - `Alt + Win + Left` / `Right` (or `Numpad0…9`): Move window to that desktop but **stay** where you are
 
 ### Pinning apps / windows to every desktop
 
  - `Ctrl + Win + Z`: Toggle pinning the active application's executable (all of its windows show on every desktop)
  - `Ctrl + Win + X`: Toggle pinning only the currently focused window
 
-### Desktop preview & naming
+### Desktop preview, naming & settings
 
- - **Hold `Ctrl + Win`**: Show a numpad-layout 3×3 preview of desktops 1–9 (1 = bottom-left, 9 = top-right) on the primary monitor, with the current desktop highlighted and each desktop's name shown. Release to dismiss.
+ - **Hold `Ctrl + Win`**: Show a numeric-keypad preview of your desktops on the primary monitor — keys `1`–`9` are desktops 1–9 (1 = bottom-left, 9 = top-right) and `0` is desktop 10. The current desktop's key is highlighted, and each desktop's name shows beneath its number. Release to dismiss. (The `= / * BS − + Enter` keys are placeholders for now.)
  - `Ctrl + Win + NumpadDot`: Rename the current desktop. Names use the native Windows 11 desktop names, so they persist and also appear in Task View.
+ - **Tray icon → Settings**: Choose the keypad size — Small (100%), Medium (150%), or Large (200%). Your choice is saved to `%APPDATA%\VirtualDesktopSuite\settings.ini` and remembered across restarts.
 
 ---
 

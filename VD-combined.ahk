@@ -65,6 +65,9 @@ class VDGrid {
     static ColName    := 0xFF9AA0A6  ; desktop name
     static ColCurName := 0xFFEAF4FF
 
+    ; Persisted settings (loaded from the config file at startup).
+    static Scale := 1.0         ; keypad scale: 1.0 / 1.5 / 2.0 = Small / Medium / Large
+
     ; Runtime state.
     static Hud := 0             ; the layered Gui while created (kept hidden when not shown)
     static ShownFor := -1       ; which desktop the shown keypad highlights
@@ -87,6 +90,11 @@ gdipSi := Buffer(A_PtrSize = 8 ? 24 : 16, 0)
 NumPut("UInt", 1, gdipSi, 0)
 DllCall("gdiplus\GdiplusStartup", "Ptr*", &gdipTok := 0, "Ptr", gdipSi, "Ptr", 0)
 VDGrid.GdipToken := gdipTok
+
+; Load persisted settings, and add a "Settings" entry to the tray right-click menu.
+LoadConfig()
+A_TrayMenu.Insert("1&", "Settings", ShowSettings)
+A_TrayMenu.Insert("2&")
 
 ; The Numpad hotkeys are registered at runtime, so this loop MUST run in the
 ; auto-execute section (before the first `return`/hotkey label) or they won't bind.
@@ -292,17 +300,38 @@ CheckChord() {
 
 RenameCurrentDesktop() {
     n := VD.getCurrentDesktopNum()
-
     VDGrid.Naming := true
     HideGrid() ; get the HUD out of the way of the dialog
+    ShowRenameDialog(n, DesktopName(n))
+}
 
-    ib := InputBox("Enter a name for desktop " n ":", "Rename desktop " n, "w300 h130", DesktopName(n))
+; Dark, keypad-styled rename dialog (replaces the default InputBox).
+ShowRenameDialog(n, currentName) {
+    dlg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Rename desktop " n)
+    dlg.BackColor := "2B2B2B"
+    dlg.MarginX := 18, dlg.MarginY := 16
+    dlg.SetFont("s10", "Segoe UI")
+    dlg.AddText("cD6D6D6", "Name for desktop " n ":")
+    edit := dlg.AddEdit("xm y+8 w300 r1 Background3A3A3A cFFFFFF -E0x200")
+    edit.Value := currentName
+    dlg.SetFont("s9")
+    save := dlg.AddButton("xm y+16 w95 Default", "Save")
+    cancel := dlg.AddButton("x+10 w95", "Cancel")
+    save.OnEvent("Click", (*) => RenameFinish(dlg, edit.Value, n, false))
+    cancel.OnEvent("Click", (*) => RenameFinish(dlg, "", n, true))
+    dlg.OnEvent("Escape", (*) => RenameFinish(dlg, "", n, true))
+    dlg.OnEvent("Close", (*) => RenameFinish(dlg, "", n, true))
+    dlg.Show("AutoSize Center")
+    edit.Focus()
+    try SendMessage(0xB1, 0, -1, edit) ; EM_SETSEL -> select all
+}
 
+RenameFinish(dlg, value, n, cancelled) {
+    dlg.Destroy()
     VDGrid.Naming := false
-    if (ib.Result = "OK")
-        VD.setNameToDesktopNum(ib.Value, n)
-    ; Next time the grid shows it rebuilds from scratch (HideGrid reset ShownFor),
-    ; so the new name appears automatically.
+    ; Next time the keypad shows it rebuilds (HideGrid reset ShownFor), so a new name appears.
+    if (!cancelled)
+        VD.setNameToDesktopNum(value, n)
 }
 
 ; The desktop's custom name, or "" if it has none (so we don't print a redundant
@@ -323,10 +352,12 @@ ShowOrUpdateGrid() {
     if (VDGrid.Hud && VDGrid.ShownFor = current)
         return
 
-    kpW := VDGrid.Pad*2 + 4*VDGrid.Cell + 3*VDGrid.Gap
-    kpH := VDGrid.Pad*2 + 5*VDGrid.Cell + 4*VDGrid.Gap
+    s := VDGrid.Scale
+    pad := Round(VDGrid.Pad * s), cell := Round(VDGrid.Cell * s), gap := Round(VDGrid.Gap * s)
+    kpW := pad*2 + 4*cell + 3*gap
+    kpH := pad*2 + 5*cell + 4*gap
 
-    pBmp := RenderKeypad(current, kpW, kpH)
+    pBmp := RenderKeypad(current, pad, cell, gap, s, kpW, kpH)
 
     ; Create the layered, no-activate, always-on-top window once; reuse it after.
     if !VDGrid.Hud {
@@ -379,9 +410,8 @@ KpLayout() {
     ]
 }
 
-RenderKeypad(current, kpW, kpH) {
+RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
     count := VD.getCount()
-    pad := VDGrid.Pad, cell := VDGrid.Cell, gap := VDGrid.Gap
 
     DllCall("gdiplus\GdipCreateBitmapFromScan0", "Int", kpW, "Int", kpH, "Int", 0, "Int", 0x26200A, "Ptr", 0, "Ptr*", &pBmp := 0)
     DllCall("gdiplus\GdipGetImageGraphicsContext", "Ptr", pBmp, "Ptr*", &G := 0)
@@ -389,7 +419,7 @@ RenderKeypad(current, kpW, kpH) {
     DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", G, "Int", 4)
     DllCall("gdiplus\GdipSetInterpolationMode", "Ptr", G, "Int", 7)
 
-    KpFill(G, 0, 0, kpW, kpH, 22, VDGrid.ColBody)
+    KpFill(G, 0, 0, kpW, kpH, 22*s, VDGrid.ColBody)
 
     for kd in KpLayout() {
         cs := kd.HasOwnProp("cs") ? kd.cs : 1
@@ -400,22 +430,22 @@ RenderKeypad(current, kpW, kpH) {
         kh := cell + (rs - 1) * (cell + gap)
 
         isCur := (kd.k = "digit" && kd.d = current)
-        KpFill(G, kx, ky, kw, kh, 10, isCur ? VDGrid.ColCur : VDGrid.ColBody)
-        KpStroke(G, kx, ky, kw, kh, 10, isCur ? VDGrid.ColCurStrk : VDGrid.ColStroke, 1.5)
+        KpFill(G, kx, ky, kw, kh, 10*s, isCur ? VDGrid.ColCur : VDGrid.ColBody)
+        KpStroke(G, kx, ky, kw, kh, 10*s, isCur ? VDGrid.ColCurStrk : VDGrid.ColStroke, 1.5*s)
 
         if (kd.k = "digit") {
             nm := (kd.d <= count) ? DesktopName(kd.d) : ""
             txtCol := isCur ? VDGrid.ColCurTxt : VDGrid.ColTxt
             lbl := kd.HasOwnProp("lbl") ? kd.lbl : kd.d
             ; Number always sits in the upper area, name slot reserved below.
-            KpText(G, lbl, kx, ky + 6, kw, kh - 30, 30, txtCol, true)
+            KpText(G, lbl, kx, ky + 6*s, kw, kh - 30*s, 30*s, txtCol, true)
             if (nm != "")
-                KpText(G, nm, kx, ky + kh - 30, kw, 24, 12, isCur ? VDGrid.ColCurName : VDGrid.ColName)
+                KpText(G, nm, kx, ky + kh - 30*s, kw, 24*s, 12*s, isCur ? VDGrid.ColCurName : VDGrid.ColName)
         } else if (kd.k = "glyph" || kd.k = "text") {
             sz := kd.HasOwnProp("sz") ? kd.sz : 30
-            KpText(G, kd.t, kx, ky, kw, kh, sz, VDGrid.ColTxt, kd.k != "text")
+            KpText(G, kd.t, kx, ky, kw, kh, sz*s, VDGrid.ColTxt, kd.k != "text")
         } else if (kd.k = "icon") {
-            isz := 40
+            isz := Round(40 * s)
             KpIcon(G, A_ScriptDir "\" kd.ic, kx + (kw - isz)//2, ky + (kh - isz)//2, isz, isz)
         }
     }
@@ -497,4 +527,43 @@ KpBlitLayered(hwnd, pBmp, x, y, w, h) {
     DllCall("DeleteObject", "Ptr", hbm)
     DllCall("DeleteDC", "Ptr", hdcMem)
     DllCall("ReleaseDC", "Ptr", 0, "Ptr", hdcScreen)
+}
+
+; =============================================================================
+; SETTINGS (persisted per-machine in %APPDATA%\VirtualDesktopSuite\settings.ini)
+; =============================================================================
+
+ConfigFile() => A_AppData "\VirtualDesktopSuite\settings.ini"
+
+LoadConfig() {
+    VDGrid.Scale := IniRead(ConfigFile(), "Keypad", "Scale", "1.0") + 0 ; +0 -> number
+}
+
+SaveScale(scale) {
+    dir := A_AppData "\VirtualDesktopSuite"
+    if !DirExist(dir)
+        DirCreate(dir)
+    IniWrite(scale, ConfigFile(), "Keypad", "Scale")
+    VDGrid.Scale := scale
+    VDGrid.ShownFor := -1 ; force a re-render at the new scale next time the keypad shows
+}
+
+; Tray > Settings window. Dark, matches the keypad/rename styling.
+ShowSettings(*) {
+    sg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Virtual Desktop Suite - Settings")
+    sg.BackColor := "2B2B2B"
+    sg.MarginX := 18, sg.MarginY := 16
+    sg.SetFont("s10 Bold", "Segoe UI")
+    sg.AddText("cD6D6D6", "Keypad size")
+    sg.SetFont("s10 Norm", "Segoe UI")
+    rS := sg.AddRadio("xm y+10 cE0E0E0" (VDGrid.Scale < 1.25 ? " Checked" : ""), "Small  (100%)")
+    rM := sg.AddRadio("xm y+6 cE0E0E0" (VDGrid.Scale >= 1.25 && VDGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
+    rL := sg.AddRadio("xm y+6 cE0E0E0" (VDGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
+    sg.SetFont("s9")
+    save := sg.AddButton("xm y+18 w95 Default", "Save")
+    cancel := sg.AddButton("x+10 w95", "Cancel")
+    save.OnEvent("Click", (*) => (SaveScale(rS.Value ? 1.0 : rM.Value ? 1.5 : 2.0), sg.Destroy()))
+    cancel.OnEvent("Click", (*) => sg.Destroy())
+    sg.OnEvent("Escape", (*) => sg.Destroy())
+    sg.Show("AutoSize Center")
 }

@@ -16,12 +16,13 @@ The virtual-desktop functionality is now consolidated into a **single** script, 
 - **[VD-combined.ahk](VD-combined.ahk)** merges what used to be five separate scripts: `VD-navigate-wraparound.ahk`, `VD-move-window.ahk`, `VD-numpad-desktops.ahk`, `VD-pin-app.ahk`, and `VD-grid.ahk` (the preview HUD + desktop rename). It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
 - The original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `VD-move-window-with-desktop.ahk` was merged into `VD-move-window.ahk` and removed.
 
-#### Preview grid + desktop rename (in VD-combined.ahk)
+#### Preview keypad + desktop rename + settings (in VD-combined.ahk)
 
-Two features live only in the consolidated script (their original was `VD-grid.ahk`):
+These features live only in the consolidated script (their original was `VD-grid.ahk`):
 
-- **Preview grid** — holding `Ctrl+Win` shows a numpad-layout 3×3 HUD of desktops 1-9 (1 = bottom-left, 9 = top-right), centered on the **primary** monitor, highlighting the current desktop and showing each desktop's name. Driven by a lightweight `SetTimer CheckChord, 75` poll (more robust than hooking the modifier keys) and a `class VDGrid` holding its config + state. The HUD window is `WS_EX_NOACTIVATE` so it never steals focus. It is purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
-- **Desktop rename** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off) opens an InputBox to name the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and also appear in Task View — no separate config file is used.
+- **Preview keypad** — holding `Ctrl+Win` shows a full numeric-keypad HUD rendered with **GDI+** onto a **layered window** (`UpdateLayeredWindow`, `WS_EX_LAYERED | WS_EX_NOACTIVATE`), centered on the **primary** monitor. Layout matches a real numpad: `= / * BS` / `7 8 9 −` / `4 5 6 +` / `1 2 3 Enter` / `0 .`, so `1`–`9` map to desktops 1–9 (1 = bottom-left, 9 = top-right) and the `0` key is **desktop 10** (labelled "0"). The current desktop's key is filled blue; each desktop's name is drawn beneath its number (number position is fixed whether or not a name exists). The `= / * BS − + Enter` keys are inert placeholders for future assignment; the backspace key uses a bundled icon (`assets/keys/bs.png`, rasterized from `bs.svg`). Driven by a lightweight `SetTimer CheckChord, 75` poll; a `class VDGrid` holds geometry, ARGB colors, the `Scale` setting, and runtime state. Renderer entry point is `RenderKeypad()` (+ `Kp*` helpers); redraws only on desktop change. Purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
+- **Desktop rename** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off) opens a dark, keypad-styled dialog (`ShowRenameDialog`) to name the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and also appear in Task View.
+- **Settings (persisted)** — the tray right-click menu has a **Settings** entry (`ShowSettings`) to pick the keypad size **Small (100%) / Medium (150%) / Large (200%)**. The choice is saved to `%APPDATA%\VirtualDesktopSuite\settings.ini` (`[Keypad] Scale=…`) via `LoadConfig` / `SaveScale`, loaded at startup, and applied immediately (the whole keypad — keys, fonts, icon, radii — scales by `VDGrid.Scale`). This is the per-machine config store, kept out of the repo so it survives updates.
 
 The per-script sections below document the original scripts; their logic is what `VD-combined.ahk` consolidates.
 
@@ -366,7 +367,7 @@ Enable debugging output:
 | File | Type | Purpose | Dependencies |
 |------|------|---------|--------------|
 | [startup.ahk](startup.ahk) | Entry point | Loads VD-combined in-process; launches future standalone scripts | VD-combined.ahk |
-| [VD-combined.ahk](VD-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview grid + rename, one tray icon | VD.ahk, VD-icon.ico |
+| [VD-combined.ahk](VD-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview keypad + rename + settings, one tray icon | VD.ahk, VD-icon.ico, assets/keys/, gdiplus |
 | [VD-navigate-wraparound.ahk](VD-navigate-wraparound.ahk) | Standalone (merged into combined) | Switch desktop with wrap-around | VD.ahk |
 | [VD-move-window.ahk](VD-move-window.ahk) | Standalone (merged into combined) | Move window ± follow (arrows) | VD.ahk |
 | [VD-numpad-desktops.ahk](VD-numpad-desktops.ahk) | Standalone (merged into combined) | Absolute desktop access 1–9 (navigate/move) | VD.ahk |
@@ -376,12 +377,14 @@ Enable debugging output:
 | [VD-cascade.ahk](VD-cascade.ahk) | Standalone (not in suite) | Cascade/tile windows | VD.ahk, _WinArrange.ahk |
 | [_WinArrange.ahk](_WinArrange.ahk) | Library | Windows API wrapper | None |
 | [VD-icon.ico](VD-icon.ico) / [VD-icon.svg](VD-icon.svg) | Asset | Blue tray icon for the suite | None |
+| [assets/keys/bs.png](assets/keys/bs.png) / `bs.svg` | Asset | Backspace key icon for the preview keypad | None |
+| `%APPDATA%\VirtualDesktopSuite\settings.ini` | Config (per-machine, not in repo) | Persisted settings, e.g. `[Keypad] Scale` | None |
 
 ---
 
 ## Hotkey Reference Table
 
-> The Desktop Navigation, Window Movement, Numpad, Pinning, and Preview/Rename hotkeys below are all provided by the consolidated [VD-combined.ahk](VD-combined.ahk).
+> The Desktop Navigation, Window Movement, Numpad, Pinning, Preview keypad, Rename, and Settings entries below are all provided by the consolidated [VD-combined.ahk](VD-combined.ahk).
 
 ### Desktop Navigation
 
@@ -403,8 +406,9 @@ Enable debugging output:
 | Hotkey | Action |
 |--------|--------|
 | `Ctrl + Win + Numpad1…9` | Switch directly to desktop 1–9 |
-| `Ctrl + Alt + Win + Numpad1…9` | Move window to desktop 1–9 + follow |
-| `Alt + Win + Numpad1…9` | Move window to desktop 1–9 (stay) |
+| `Ctrl + Win + Numpad0` | Switch directly to desktop 10 |
+| `Ctrl + Alt + Win + Numpad0…9` | Move window to that desktop (1–10) + follow |
+| `Alt + Win + Numpad0…9` | Move window to that desktop (1–10), stay |
 
 ### Pinning
 
@@ -413,12 +417,13 @@ Enable debugging output:
 | `Ctrl + Win + Z` | Pin/unpin active app (all its windows) to every desktop |
 | `Ctrl + Win + X` | Pin/unpin only the active window to every desktop |
 
-### Preview grid & rename
+### Preview keypad, rename & settings
 
-| Hotkey | Action |
-|--------|--------|
-| `Ctrl + Win` (hold) | Show numpad-layout 3×3 preview of desktops 1–9 on the primary monitor (current highlighted, names shown) |
+| Hotkey / action | Result |
+|-----------------|--------|
+| `Ctrl + Win` (hold) | Show the numpad keypad HUD (desktops 1–10, current highlighted, names shown) on the primary monitor; release to dismiss |
 | `Ctrl + Win + NumpadDot` | Rename the current desktop (native Win11 name; also `NumpadDel` for NumLock-off) |
+| Tray icon → **Settings** | Pick keypad size Small / Medium / Large (persisted to `%APPDATA%\VirtualDesktopSuite\settings.ini`) |
 
 ### Window Arrangement
 
