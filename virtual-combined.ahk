@@ -216,10 +216,10 @@ LoadLaunchers() {
         action := IniRead(f, sec, "Action", "")
         if (action = "") {
             if (!seeded && d.id = "div")   ; default seed
-                LaunchCfg.Items[d.id] := {action:"chrome", path:"", args:"", profile:"ask"}
+                LaunchCfg.Items[d.id] := {action:"chrome", path:"", args:"", profile:"ask", name:"Chrome"}
             continue
         }
-        LaunchCfg.Items[d.id] := {action: action, path: IniRead(f, sec, "Path", ""), args: IniRead(f, sec, "Args", ""), profile: IniRead(f, sec, "Profile", "ask")}
+        LaunchCfg.Items[d.id] := {action: action, path: IniRead(f, sec, "Path", ""), args: IniRead(f, sec, "Args", ""), profile: IniRead(f, sec, "Profile", "ask"), name: IniRead(f, sec, "Name", "")}
     }
 }
 
@@ -237,6 +237,7 @@ SaveLaunchers(items) {
             IniWrite(e.HasOwnProp("path")    ? e.path    : "", f, sec, "Path")
             IniWrite(e.HasOwnProp("args")    ? e.args    : "", f, sec, "Args")
             IniWrite(e.HasOwnProp("profile") ? e.profile : "ask", f, sec, "Profile")
+            IniWrite(e.HasOwnProp("name")    ? e.name    : "", f, sec, "Name")
         } else {
             try IniDelete(f, sec)
         }
@@ -244,6 +245,7 @@ SaveLaunchers(items) {
     IniWrite(1, f, "Launchers", "Seeded")
     LaunchCfg.Items := items
     ApplyLaunchers()
+    VirtualGrid.ShownFor := -1   ; force the HUD to rebuild with any changed names
 }
 
 ; (Re)bind every operator hotkey to match the current config. Assigned keys are
@@ -580,27 +582,42 @@ HideGrid() {
 ; ---- Keypad rendering (GDI+) ------------------------------------------------
 ; Numpad layout. k=kind: digit|glyph|text|icon. d=desktop (digit). lbl overrides
 ; the drawn label (the 0 key shows "0" but is desktop 10). c/r=col/row, cs/rs=spans.
+; lid = launcher id (operator keys); its assigned name is drawn under the glyph.
+; name = a fixed caption drawn under the glyph (the . key always shows "Config").
 KpLayout() {
     return [
-        {k:"glyph", t:"=",        c:0, r:0},
-        {k:"glyph", t:"/",        c:1, r:0},
-        {k:"glyph", t:"*",        c:2, r:0},
+        {k:"glyph", t:"=",        lid:"eq",   c:0, r:0},
+        {k:"glyph", t:"/",        lid:"div",  c:1, r:0},
+        {k:"glyph", t:"*",        lid:"mult", c:2, r:0},
         {k:"icon",  ic:"assets\keys\bs.png", c:3, r:0},
         {k:"digit", d:7,          c:0, r:1},
         {k:"digit", d:8,          c:1, r:1},
         {k:"digit", d:9,          c:2, r:1},
-        {k:"glyph", t:"−", sz:34,  c:3, r:1},
+        {k:"glyph", t:"−", sz:34, lid:"sub", c:3, r:1},
         {k:"digit", d:4,          c:0, r:2},
         {k:"digit", d:5,          c:1, r:2},
         {k:"digit", d:6,          c:2, r:2},
-        {k:"glyph", t:"+", sz:34,  c:3, r:2},
+        {k:"glyph", t:"+", sz:34, lid:"add", c:3, r:2},
         {k:"digit", d:1,          c:0, r:3},
         {k:"digit", d:2,          c:1, r:3},
         {k:"digit", d:3,          c:2, r:3},
-        {k:"text",  t:"Enter", sz:20, c:3, r:3, rs:2},
+        {k:"text",  t:"Enter", sz:20, lid:"enter", c:3, r:3, rs:2},
         {k:"digit", d:10, lbl:"0", c:0, r:4, cs:2},
-        {k:"glyph", t:".", sz:34,  c:2, r:4},
+        {k:"glyph", t:".", sz:34, name:"Config", c:2, r:4},
     ]
+}
+
+; The caption to draw under an operator/glyph key: a fixed name (the . key), or
+; the name assigned to its launcher (only when that key is actually assigned).
+KpKeyName(kd) {
+    if kd.HasOwnProp("name")
+        return kd.name
+    if (kd.HasOwnProp("lid") && LaunchCfg.Items.Has(kd.lid)) {
+        e := LaunchCfg.Items[kd.lid]
+        if (e.action != "" && e.action != "none" && e.HasOwnProp("name"))
+            return e.name
+    }
+    return ""
 }
 
 RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
@@ -636,7 +653,14 @@ RenderKeypad(current, pad, cell, gap, s, kpW, kpH) {
                 KpText(G, nm, kx, ky + kh - 30*s, kw, 24*s, 12*s, isCur ? VirtualGrid.ColCurName : VirtualGrid.ColName)
         } else if (kd.k = "glyph" || kd.k = "text") {
             sz := kd.HasOwnProp("sz") ? kd.sz : 30
-            KpText(G, kd.t, kx, ky, kw, kh, sz*s, VirtualGrid.ColTxt, kd.k != "text")
+            nm := KpKeyName(kd)
+            if (nm != "") {
+                ; Glyph in the upper area, caption beneath (mirrors the digit keys).
+                KpText(G, kd.t, kx, ky + 6*s, kw, kh - 30*s, sz*s, VirtualGrid.ColTxt, kd.k != "text")
+                KpText(G, nm, kx, ky + kh - 30*s, kw, 24*s, 12*s, VirtualGrid.ColName)
+            } else {
+                KpText(G, kd.t, kx, ky, kw, kh, sz*s, VirtualGrid.ColTxt, kd.k != "text")
+            }
         } else if (kd.k = "icon") {
             isz := Round(40 * s)
             KpIcon(G, A_ScriptDir "\" kd.ic, kx + (kw - isz)//2, ky + (kh - isz)//2, isz, isz)
@@ -759,7 +783,7 @@ ShowHotpadDialog(startTab := "desktop") {
     ; A working copy of the launcher config the Launchers tab edits; committed on Save.
     workItems := Map()
     for id, e in LaunchCfg.Items
-        workItems[id] := {action: e.action, path: (e.HasOwnProp("path") ? e.path : ""), args: (e.HasOwnProp("args") ? e.args : ""), profile: (e.HasOwnProp("profile") ? e.profile : "ask")}
+        workItems[id] := {action: e.action, path: (e.HasOwnProp("path") ? e.path : ""), args: (e.HasOwnProp("args") ? e.args : ""), profile: (e.HasOwnProp("profile") ? e.profile : "ask"), name: (e.HasOwnProp("name") ? e.name : "")}
 
     dlg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Sygnal HotPad")
     dlg.BackColor := "2B2B2B"
@@ -793,27 +817,28 @@ ShowHotpadDialog(startTab := "desktop") {
     ; --- Launchers panel: a Key | Action | Target table. Double-click a row (or
     ; Edit…) to assign it an app or Chrome+profile. ---
     lblL := dlg.AddText("xm y" cy " cD6D6D6", "Ctrl+Win + each key launches its assignment. Double-click a row to change it.")
-    lv := dlg.AddListView("xm y+8 w360 r9 Background2B2B2B cE0E0E0 -Multi +LV0x10000", ["Key", "Action", "Target"])  ; LVS_EX_DOUBLEBUFFER
+    lv := dlg.AddListView("xm y+8 w360 r9 Background2B2B2B cE0E0E0 -Multi +LV0x10000", ["Key", "Name", "Action", "Target"])  ; LVS_EX_DOUBLEBUFFER
 
     RefreshLV() {
         lv.Delete()
         for d in LauncherDefs() {
             e := workItems.Has(d.id) ? workItems[d.id] : 0
+            nm := (e && e.HasOwnProp("name") && e.name != "") ? e.name : "—"
             if (!e || e.action = "" || e.action = "none") {
-                lv.Add(, d.glyph, "—", "—")
+                lv.Add(, d.glyph, "—", "—", "—")
                 continue
             }
             if (e.action = "chrome") {
                 tgt := (e.profile = "ask" || e.profile = "") ? "(ask each time)" : e.profile
-                lv.Add(, d.glyph, "Chrome", tgt)
+                lv.Add(, d.glyph, nm, "Chrome", tgt)
             } else {
-                nm := ""
+                base := ""
                 if (e.path != "")
-                    SplitPath(e.path, &nm)
-                lv.Add(, d.glyph, "Application", nm = "" ? "—" : nm)
+                    SplitPath(e.path, &base)
+                lv.Add(, d.glyph, nm, "Application", base = "" ? "—" : base)
             }
         }
-        lv.ModifyCol(1, 60), lv.ModifyCol(2, 95), lv.ModifyCol(3, 195)
+        lv.ModifyCol(1, 40), lv.ModifyCol(2, 95), lv.ModifyCol(3, 90), lv.ModifyCol(4, 130)
     }
 
     EditSelected() {
@@ -821,7 +846,7 @@ ShowHotpadDialog(startTab := "desktop") {
         if !row
             return
         d := LauncherDefs()[row]
-        cur := workItems.Has(d.id) ? workItems[d.id] : {action: "none", path: "", args: "", profile: "ask"}
+        cur := workItems.Has(d.id) ? workItems[d.id] : {action: "none", path: "", args: "", profile: "ask", name: ""}
         res := EditLauncher(dlg, d.glyph, cur)
         if (res != "") {
             workItems[d.id] := res
@@ -886,8 +911,8 @@ ShowHotpadDialog(startTab := "desktop") {
 }
 
 ; Modal sub-dialog to assign one operator key. Returns the new item object
-; {action, path, args, profile}, or "" if cancelled. Fixed layout: the App and
-; Chrome controls share the same region (y 74/96) and are toggled by Action.
+; {action, path, args, profile, name}, or "" if cancelled. Fixed layout: the App
+; and Chrome controls share the same region (y 134/156) and are toggled by Action.
 EditLauncher(parent, glyph, cur) {
     result := ""
     g := Gui("-MinimizeBox -MaximizeBox +Owner" parent.Hwnd, "Assign " glyph " key")
@@ -898,12 +923,16 @@ EditLauncher(parent, glyph, cur) {
     g.AddText("xm y14 cD6D6D6", "When you press Ctrl+Win+" glyph ":")
     actDDL := g.AddDropDownList("xm y36 w320 Choose" (cur.action = "app" ? 2 : cur.action = "chrome" ? 3 : 1), ["Do nothing", "Launch an application", "Open Chrome"])
 
+    ; Name shown on the keypad HUD (common to app + chrome).
+    nameLbl := g.AddText("xm y74 cD6D6D6", "Name (shown on the keypad):")
+    nameEd  := g.AddEdit("xm y96 w320 r1 -Multi -Wrap Background3A3A3A cFFFFFF -E0x200", cur.HasOwnProp("name") ? cur.name : "")
+
     ; Application controls.
-    appLbl  := g.AddText("xm y74 cD6D6D6", "Program:")
-    pathEd  := g.AddEdit("xm y96 w320 r1 -Multi -Wrap Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.path : "")
-    browse  := g.AddButton("xm y126 w120", "Browse…")
-    argsLbl := g.AddText("xm y162 cD6D6D6", "Arguments (optional):")
-    argsEd  := g.AddEdit("xm y184 w320 Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.args : "")
+    appLbl  := g.AddText("xm y134 cD6D6D6", "Program:")
+    pathEd  := g.AddEdit("xm y156 w320 r1 -Multi -Wrap Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.path : "")
+    browse  := g.AddButton("xm y186 w120", "Browse…")
+    argsLbl := g.AddText("xm y222 cD6D6D6", "Arguments (optional):")
+    argsEd  := g.AddEdit("xm y244 w320 Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.args : "")
 
     ; Chrome controls, sharing the App region's top.
     profList := ["Ask each time"]
@@ -915,14 +944,16 @@ EditLauncher(parent, glyph, cur) {
             if (p = cur.profile)
                 chooseIdx := i
     }
-    profLbl := g.AddText("xm y74 cD6D6D6", "Profile:")
-    profDDL := g.AddDropDownList("xm y96 w320 Choose" chooseIdx, profList)
+    profLbl := g.AddText("xm y134 cD6D6D6", "Profile:")
+    profDDL := g.AddDropDownList("xm y156 w320 Choose" chooseIdx, profList)
 
-    okBtn := g.AddButton("xm y222 w95 Default", "OK")
+    okBtn := g.AddButton("xm y294 w95 Default", "OK")
     cnBtn := g.AddButton("x+10 yp w95", "Cancel")
 
     UpdateMode(*) {
         m := actDDL.Value   ; 1=none 2=app 3=chrome
+        for c in [nameLbl, nameEd]
+            c.Visible := (m != 1)
         for c in [appLbl, pathEd, browse, argsLbl, argsEd]
             c.Visible := (m = 2)
         for c in [profLbl, profDDL]
@@ -938,12 +969,13 @@ EditLauncher(parent, glyph, cur) {
     Done(ok) {
         if (ok) {
             m := actDDL.Value
+            nm := nameEd.Value
             if (m = 1)
-                result := {action: "none", path: "", args: "", profile: "ask"}
+                result := {action: "none", path: "", args: "", profile: "ask", name: ""}
             else if (m = 2)
-                result := {action: "app", path: pathEd.Value, args: argsEd.Value, profile: "ask"}
+                result := {action: "app", path: pathEd.Value, args: argsEd.Value, profile: "ask", name: nm}
             else
-                result := {action: "chrome", path: "", args: "", profile: (profDDL.Text = "Ask each time" ? "ask" : profDDL.Text)}
+                result := {action: "chrome", path: "", args: "", profile: (profDDL.Text = "Ask each time" ? "ask" : profDDL.Text), name: nm}
         }
         g.Destroy()
     }
@@ -957,7 +989,7 @@ EditLauncher(parent, glyph, cur) {
 
     UpdateMode()
     parent.Opt("+Disabled")
-    g.Show("w352 h268 Center")
+    g.Show("w352 h340 Center")
     WinWaitClose("ahk_id " g.Hwnd)
     parent.Opt("-Disabled")
     WinActivate("ahk_id " parent.Hwnd)

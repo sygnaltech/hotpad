@@ -12,17 +12,18 @@ All scripts are written in AutoHotKey v2.0 and depend on the [VD.ahk](https://gi
 
 The virtual-desktop functionality is now consolidated into a **single** script, [virtual-combined.ahk](virtual-combined.ahk), which runs as one process / one tray icon (a blue connection-mark icon, `virtual-icon.ico`, with the tray tooltip "Sygnal HotPad").
 
-- **[startup.ahk](startup.ahk)** is the entry point. It `#Include`s `virtual-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
+- **[hotpad.ahk](hotpad.ahk)** is the entry point. It `#Include`s `virtual-combined.ahk` so the suite runs in-process, and retains a `LaunchScript` helper + (currently empty) `scripts` list for launching any *future* standalone scripts as separate processes.
 - **[virtual-combined.ahk](virtual-combined.ahk)** merges what used to be five separate scripts: `virtual-navigate-wraparound.ahk`, `virtual-move-window.ahk`, `virtual-numpad-desktops.ahk`, `virtual-pin-app.ahk`, and `virtual-grid.ahk` (the preview HUD + desktop rename). It dedupes their shared setup, the library `#Include`, and helpers (`WaitForDesktop`, `AdjacentDesktop`, `MoveWindowToDesktop`).
-- The original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `startup.ahk`. The older `virtual-move-window-with-desktop.ahk` was merged into `virtual-move-window.ahk` and removed.
+- The original scripts are **kept in the repo and remain standalone-runnable**, but are **no longer launched** by `hotpad.ahk`. The older `virtual-move-window-with-desktop.ahk` was merged into `virtual-move-window.ahk` and removed.
 
 Directory layout:
 
 ```
 virtual-combined.ahk    the whole suite (one tray icon)
-startup.ahk             entry point — loads virtual-combined
+hotpad.ahk              entry point — loads virtual-combined
 virtual-icon.*          tray icon
 assets/keys/            keypad key icons (PNG + SVG source)
+assets/screenshots/     doc images (keypad-hud.svg)
 lib/                    bundled VD.ahk dependency (vendored; see lib/UPSTREAM.md)
 reference/              the individual scripts folded into the suite (kept for reference)
 extras/                 standalone scripts not part of the suite (cascade + _winarrange, app switcher)
@@ -31,13 +32,19 @@ legacy/                 older / niche / personal scripts and notes
 
 Note: scripts in `reference/` and `extras/` reach the library via `../lib/VD.ah2` (one level up); the root suite uses `lib/VD.ah2`.
 
-#### Preview keypad + desktop rename + settings (in virtual-combined.ahk)
+#### Preview keypad + Config dialog + launchers (in virtual-combined.ahk)
 
 These features live only in the consolidated script (their original was `virtual-grid.ahk`):
 
-- **Preview keypad** — holding `Ctrl+Win` shows a full numeric-keypad HUD rendered with **GDI+** onto a **layered window** (`UpdateLayeredWindow`, `WS_EX_LAYERED | WS_EX_NOACTIVATE`), centered on the **primary** monitor. Layout matches a real numpad: `= / * BS` / `7 8 9 −` / `4 5 6 +` / `1 2 3 Enter` / `0 .`, so `1`–`9` map to desktops 1–9 (1 = bottom-left, 9 = top-right) and the `0` key is **desktop 10** (labelled "0"). The current desktop's key is filled blue; each desktop's name is drawn beneath its number (number position is fixed whether or not a name exists). The `= / * BS − + Enter` keys are inert placeholders for future assignment; the backspace key uses a bundled icon (`assets/keys/bs.png`, rasterized from `bs.svg`). Driven by a lightweight `SetTimer CheckChord, 75` poll; a `class VirtualGrid` holds geometry, ARGB colors, the `Scale` setting, and runtime state. Renderer entry point is `RenderKeypad()` (+ `Kp*` helpers); redraws only on desktop change. Purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
-- **Desktop rename** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off) opens a dark, keypad-styled dialog (`ShowRenameDialog`) to name the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and also appear in Task View.
-- **Settings (persisted)** — the tray right-click menu has a **Settings** entry (`ShowSettings`) to pick the keypad size **Small (100%) / Medium (150%) / Large (200%)**. The choice is saved to `%APPDATA%\Sygnal HotPad\settings.ini` (`[Keypad] Scale=…`) via `LoadConfig` / `SaveScale`, loaded at startup, and applied immediately (the whole keypad — keys, fonts, icon, radii — scales by `VirtualGrid.Scale`). This is the per-machine config store, kept out of the repo so it survives updates.
+- **Preview keypad** — holding `Ctrl+Win` shows a full numeric-keypad HUD rendered with **GDI+** onto a **layered window** (`UpdateLayeredWindow`, `WS_EX_LAYERED | WS_EX_NOACTIVATE`), centered on the **primary** monitor. Layout matches a real numpad: `= / * BS` / `7 8 9 −` / `4 5 6 +` / `1 2 3 Enter` / `0 .`, so `1`–`9` map to desktops 1–9 (1 = bottom-left, 9 = top-right) and the `0` key is **desktop 10** (labelled "0"). The current desktop's key is filled blue; each desktop's name is drawn beneath its number. The operator keys (`= / * − + Enter`) draw the **name of their assigned launcher** beneath the glyph (see Launchers), and the `.` key always shows **"Config"**. The backspace key uses a bundled icon (`assets/keys/bs.png`, rasterized from `bs.svg`). Driven by a lightweight `SetTimer CheckChord, 75` poll; a `class VirtualGrid` holds geometry, ARGB colors, the `Scale` setting, and runtime state. Renderer entry point is `RenderKeypad()` (+ `Kp*` helpers, incl. `KpKeyName()` for the captions); redraws only on change. Purely informational — actual switching uses the `Ctrl+Win+Numpad` hotkeys.
+- **Config dialog** — `Ctrl+Win+NumpadDot` (or `NumpadDel` with NumLock off), or the tray **Settings** / **Launchers** entries, open one dark, keypad-styled tabbed dialog (`ShowHotpadDialog`) with custom on-theme tab headers (selected tab filled blue; only the background toggles via `Opt()`+`Redraw`). Tabs:
+  - **Desktop** — rename the current desktop. Names use the **native Windows 11 desktop names** via `VD.setNameToDesktopNum` / `VD.getNameFromDesktopNum`, so they persist, survive reordering, and appear in Task View.
+  - **Settings** — keypad size **Small (100%) / Medium (150%) / Large (200%)** (the whole keypad — keys, fonts, icon, radii — scales by `VirtualGrid.Scale`).
+  - **Launchers** — a `Key | Name | Action | Target` ListView; double-click a row to open the `EditLauncher` sub-dialog (Action = Do nothing / Application / Open Chrome, plus a Name, and either a Browse-able program path + args or a profile dropdown).
+  A single **Save** commits all three at once — desktop name, scale (`SaveScale`), and launchers (`SaveLaunchers`) — and re-binds the operator hotkeys immediately.
+- **Configurable launchers** — each keypad operator key (`Ctrl+Win` + `+ − * / = ( ) Enter`) can launch an **application** (path + optional args) or open **Chrome** with a chosen profile. `LauncherDefs()` maps id → glyph → the AHK hotkey strings to bind (numpad + main-row where both are cleanly nameable; main-row `*`/`+` are skipped — they collide with AHK's wildcard/Shift syntax — so the numpad versions cover them). State lives in `class LaunchCfg`; `ApplyLaunchers()` binds assigned keys On and the rest Off, and `RunLauncher()` dispatches. Each assignment carries a **name** shown on the HUD. The `/` key seeds to the Chrome profile menu so the prior Chrome-on-`/` still works.
+- **Chrome launcher** — `LaunchChromeProfile()` runs `chrome.exe --profile-directory="<dir>" --new-window`, which opens a **new window on the current virtual desktop**. (Launching with no profile shows Chrome's own picker, which *activates an existing window* of the chosen profile — and Windows then follows it to whatever desktop it lives on — so we pin the profile ourselves and offer our own dark menu, `ChromeMenu()`, built from a live scan of `%LOCALAPPDATA%\Google\Chrome\User Data` via `ChromeProfileDirs()`.) `ChromePath()` resolves the exe via the App Paths registry key, then common install dirs.
+- **Settings store (persisted)** — saved to `%APPDATA%\Sygnal HotPad\settings.ini`, kept out of the repo so it survives updates: `[Keypad] Scale=…`, plus one `[Launch_<id>]` section per assigned key (`Action` = `app`|`chrome`, `Path`, `Args`, `Profile`, `Name`). Loaded at startup by `LoadConfig` / `LoadLaunchers`.
 
 The per-script sections below document the original scripts; their logic is what `virtual-combined.ahk` consolidates.
 
@@ -322,7 +329,7 @@ This is necessary because AutoHotKey arrays cannot be directly passed to DLL fun
 
 ### Recommended setup
 
-Run **[startup.ahk](startup.ahk)** — it loads the consolidated [virtual-combined.ahk](virtual-combined.ahk) suite in-process (one tray icon) covering navigation, window moving (relative + numpad-absolute), and pinning. No need to launch the individual VD scripts.
+Run **[hotpad.ahk](hotpad.ahk)** — it loads the consolidated [virtual-combined.ahk](virtual-combined.ahk) suite in-process (one tray icon) covering navigation, window moving (relative + numpad-absolute), and pinning. No need to launch the individual VD scripts.
 
 [virtual-cascade.ahk](virtual-cascade.ahk) (window tiling/cascading) and [app-specific-tab-switcher.ahk](app-specific-tab-switcher.ahk) (app window cycling) are **not** part of the consolidated suite or startup; run them separately if you want them.
 
@@ -330,7 +337,7 @@ Run **[startup.ahk](startup.ahk)** — it loads the consolidated [virtual-combin
 
 To auto-start with Windows:
 
-1. Create a shortcut to **[startup.ahk](startup.ahk)**
+1. Create a shortcut to **[hotpad.ahk](hotpad.ahk)**
 2. Press `Win+R` and type `shell:startup`
 3. Move the shortcut to the Startup folder
 
@@ -338,7 +345,7 @@ To auto-start with Windows:
 
 Be aware of potential conflicts:
 
-- Do **not** run `virtual-combined.ahk` (or `startup.ahk`) at the same time as the individual VD scripts it merges — they bind the same hotkeys and will fight. Exit the standalone instances first.
+- Do **not** run `virtual-combined.ahk` (or `hotpad.ahk`) at the same time as the individual VD scripts it merges — they bind the same hotkeys and will fight. Exit the standalone instances first.
 - The Numpad hotkeys assume **NumLock is ON** (they bind the digit keys `Numpad1`–`Numpad9`).
 - Check for conflicts with other software using similar hotkey combinations.
 - Hotkeys can be modified by editing the script files.
@@ -381,8 +388,8 @@ Enable debugging output:
 
 | File | Type | Purpose | Dependencies |
 |------|------|---------|--------------|
-| [startup.ahk](startup.ahk) | Entry point | Loads virtual-combined in-process; launches future standalone scripts | virtual-combined.ahk |
-| [virtual-combined.ahk](virtual-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview keypad + rename + settings, one tray icon | VD.ahk, virtual-icon.ico, assets/keys/, gdiplus |
+| [hotpad.ahk](hotpad.ahk) | Entry point | Loads virtual-combined in-process; launches future standalone scripts | virtual-combined.ahk |
+| [virtual-combined.ahk](virtual-combined.ahk) | Consolidated suite | Navigate + move (arrows & numpad) + pin + preview keypad + Config dialog (rename/settings/launchers) + operator-key app & Chrome launchers, one tray icon | VD.ahk, virtual-icon.ico, assets/keys/, gdiplus |
 | [reference/virtual-navigate-wraparound.ahk](reference/virtual-navigate-wraparound.ahk) | reference/ (merged into combined) | Switch desktop with wrap-around | VD.ahk |
 | [reference/virtual-move-window.ahk](reference/virtual-move-window.ahk) | reference/ (merged into combined) | Move window ± follow (arrows) | VD.ahk |
 | [reference/virtual-numpad-desktops.ahk](reference/virtual-numpad-desktops.ahk) | reference/ (merged into combined) | Absolute desktop access 1–9 (navigate/move) | VD.ahk |
@@ -394,13 +401,14 @@ Enable debugging output:
 | [legacy/](legacy/) | legacy/ | Older/niche/personal scripts + notes (chrome-tab-search, key-detector, emoji-key, etc.) | — |
 | [virtual-icon.ico](virtual-icon.ico) / [virtual-icon.svg](virtual-icon.svg) | Asset | Blue tray icon for the suite | None |
 | [assets/keys/bs.png](assets/keys/bs.png) / `bs.svg` | Asset | Backspace key icon for the preview keypad | None |
-| `%APPDATA%\Sygnal HotPad\settings.ini` | Config (per-machine, not in repo) | Persisted settings, e.g. `[Keypad] Scale` | None |
+| [assets/screenshots/keypad-hud.svg](assets/screenshots/keypad-hud.svg) | Asset (docs) | HUD reproduction used in the README | None |
+| `%APPDATA%\Sygnal HotPad\settings.ini` | Config (per-machine, not in repo) | Persisted settings: `[Keypad] Scale`, and `[Launch_<id>]` per assigned operator key (`Action`/`Path`/`Args`/`Profile`/`Name`) | None |
 
 ---
 
 ## Hotkey Reference Table
 
-> The Desktop Navigation, Window Movement, Numpad, Pinning, Preview keypad, Rename, and Settings entries below are all provided by the consolidated [virtual-combined.ahk](virtual-combined.ahk).
+> The Desktop Navigation, Window Movement, Numpad, Pinning, Preview keypad, Config dialog, and Launcher entries below are all provided by the consolidated [virtual-combined.ahk](virtual-combined.ahk).
 
 ### Desktop Navigation
 
@@ -433,13 +441,20 @@ Enable debugging output:
 | `Ctrl + Win + Z` | Pin/unpin active app (all its windows) to every desktop |
 | `Ctrl + Win + X` | Pin/unpin only the active window to every desktop |
 
-### Preview keypad, rename & settings
+### Preview keypad & Config dialog
 
 | Hotkey / action | Result |
 |-----------------|--------|
-| `Ctrl + Win` (hold) | Show the numpad keypad HUD (desktops 1–10, current highlighted, names shown) on the primary monitor; release to dismiss |
-| `Ctrl + Win + NumpadDot` | Rename the current desktop (native Win11 name; also `NumpadDel` for NumLock-off) |
-| Tray icon → **Settings** | Pick keypad size Small / Medium / Large (persisted to `%APPDATA%\Sygnal HotPad\settings.ini`) |
+| `Ctrl + Win` (hold) | Show the numpad keypad HUD (desktops 1–10, current highlighted, names; operator keys show their launcher names, `.` shows "Config") on the primary monitor; release to dismiss |
+| `Ctrl + Win + NumpadDot` | Open the Config dialog (Desktop / Settings / Launchers tabs); also `NumpadDel` for NumLock-off |
+| Tray icon → **Settings** / **Launchers** | Open the Config dialog on that tab (keypad size; per-key launchers). Persisted to `%APPDATA%\Sygnal HotPad\settings.ini` |
+
+### Launchers (Ctrl+Win + operator keys, configurable)
+
+| Hotkey | Action |
+|--------|--------|
+| `Ctrl + Win + /` | Default: open the Chrome profile menu (new window on the current desktop) |
+| `Ctrl + Win + + − * = ( ) Enter` | Run the assigned app, or open Chrome with the assigned profile — set in Config → Launchers |
 
 ### Window Arrangement
 

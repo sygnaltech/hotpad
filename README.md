@@ -7,7 +7,7 @@ A hotkey + numpad virtual-desktop manager for Windows 11. One tray app to switch
 <p align="center">
   <img src="assets/screenshots/screenshot.png" alt="The Ctrl+Win preview keypad — a numpad-style map of virtual desktops, the current one highlighted, with desktop names" width="600">
   <br>
-  <em>Hold <code>Ctrl+Win</code> for the preview keypad: desktops 1–10 laid out like a numpad, the current one highlighted, named desktops labelled.</em> 
+  <em>Hold <code>Ctrl+Win</code> for the preview keypad: desktops 1–10 laid out like a numpad, the current one highlighted, named desktops labelled, and operator keys showing their assigned launchers.</em> 
 </p>
 
 ## Features
@@ -15,10 +15,11 @@ A hotkey + numpad virtual-desktop manager for Windows 11. One tray app to switch
 - **Switch desktops** by arrow or numpad, with wrap-around.
 - **Move the active window** to another desktop — following it, or staying put.
 - **Pin** an app or a single window to every desktop.
+- **Launch apps & Chrome profiles** from the keypad's operator keys (`+ − * / = ( ) Enter`) — each assignment can carry a name that shows on the HUD.
 - **Preview HUD** — hold `Ctrl+Win` for a numpad-style map of desktops 1–10, the current one highlighted, with names.
 - **Name desktops** using the native Windows 11 desktop names (also shown in Task View).
 - **Back** to the previous desktop, browser-style.
-- **Settings** in the tray menu (keypad size), saved per machine.
+- **One Config dialog** (`Ctrl+Win+.` or the tray) — rename desktops, set keypad size, and edit launchers; saved per machine.
 
 ## Requirements & install
 
@@ -29,7 +30,7 @@ The VD.ahk virtual-desktop library is bundled in `lib/`, so there is nothing els
 
 ## Running
 
-Double-click **`startup.ahk`** — it loads the whole suite into a single tray icon ("Sygnal HotPad"). To launch it with Windows, put a shortcut to `startup.ahk` in your Startup folder (`Win+R` → `shell:startup`).
+Double-click **`hotpad.ahk`** — it loads the whole suite into a single tray icon ("Sygnal HotPad"). To launch it with Windows, put a shortcut to `hotpad.ahk` in your Startup folder (`Win+R` → `shell:startup`).
 
 ## Hotkeys
 
@@ -45,12 +46,18 @@ Double-click **`startup.ahk`** — it loads the whole suite into a single tray i
 - `Ctrl + Alt + Win + ←/→` (or `Numpad0…9`) — move to that desktop and follow it (alias: `Ctrl + Win + Shift + ←/→`)
 - `Alt + Win + ←/→` (or `Numpad0…9`) — move to that desktop, stay put
 
-### Pin & name
+### Pin & config
 - `Ctrl + Win + Z` / `X` — pin the active app / just the active window to every desktop
-- `Ctrl + Win + NumpadDot` — rename the current desktop
+- `Ctrl + Win + .` (NumpadDot) — open the **Config** dialog (tabs: **Desktop** to rename the current desktop, **Settings** for keypad size, **Launchers** to assign keys). Also on the tray menu as **Settings** / **Launchers**.
 
-### Settings
-- Right-click the tray icon → **Settings** — keypad size (Small / Medium / Large), remembered across restarts.
+### Launchers — apps & Chrome (configurable)
+Assign the keypad's operator keys — `Ctrl + Win +` ` + − * / = ( ) Enter` — to launch things. Open the **Config → Launchers** tab and double-click a key:
+
+- **Application** — pick (or paste) a program path, with optional arguments.
+- **Chrome** — opens a **new window on the current desktop**; choose a specific profile, or *Ask each time* for a quick profile menu.
+- Give the assignment a **name** and it shows under that key on the preview HUD.
+
+Out of the box, `Ctrl + Win + /` opens the Chrome profile menu.
 
 ## Standalone extras
 
@@ -63,7 +70,7 @@ Not part of the suite; run the script directly if you want it:
 
 ```
 virtual-combined.ahk    the whole suite (one tray icon)
-startup.ahk             entry point — run this; it loads virtual-combined
+hotpad.ahk              entry point — run this; it loads virtual-combined
 virtual-icon.*          tray icon
 assets/                 keypad key icons + doc screenshots
 lib/                    bundled VD.ahk dependency (see lib/UPSTREAM.md)
