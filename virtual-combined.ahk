@@ -794,7 +794,6 @@ ShowHotpadDialog(startTab := "desktop") {
     ; Edit…) to assign it an app or Chrome+profile. ---
     lblL := dlg.AddText("xm y" cy " cD6D6D6", "Ctrl+Win + each key launches its assignment. Double-click a row to change it.")
     lv := dlg.AddListView("xm y+8 w360 r9 Background2B2B2B cE0E0E0 -Multi +LV0x10000", ["Key", "Action", "Target"])  ; LVS_EX_DOUBLEBUFFER
-    editBtn := dlg.AddButton("xm y+8 w120", "Edit…")
 
     RefreshLV() {
         lv.Delete()
@@ -839,7 +838,7 @@ ShowHotpadDialog(startTab := "desktop") {
 
     desktopCtrls  := [lblD, edit]
     settingsCtrls := [lblS, rS, rM, rL]
-    launcherCtrls := [lblL, lv, editBtn]
+    launcherCtrls := [lblL, lv]
 
     SwitchTab(which) {
         isD := (which = "desktop"), isS := (which = "settings"), isL := (which = "launchers")
@@ -875,7 +874,6 @@ ShowHotpadDialog(startTab := "desktop") {
     hS.OnEvent("Click", (*) => SwitchTab("settings"))
     hL.OnEvent("Click", (*) => SwitchTab("launchers"))
     lv.OnEvent("DoubleClick", (*) => EditSelected())
-    editBtn.OnEvent("Click", (*) => EditSelected())
     save.OnEvent("Click", (*) => Finish(true))
     cancel.OnEvent("Click", (*) => Finish(false))
     dlg.OnEvent("Escape", (*) => Finish(false))
@@ -892,7 +890,7 @@ ShowHotpadDialog(startTab := "desktop") {
 ; Chrome controls share the same region (y 74/96) and are toggled by Action.
 EditLauncher(parent, glyph, cur) {
     result := ""
-    g := Gui("-MinimizeBox -MaximizeBox +Owner" parent.Hwnd, "Assign  " glyph)
+    g := Gui("-MinimizeBox -MaximizeBox +Owner" parent.Hwnd, "Assign " glyph " key")
     g.BackColor := "2B2B2B"
     g.MarginX := 16, g.MarginY := 14
     g.SetFont("s10", "Segoe UI")
@@ -902,7 +900,7 @@ EditLauncher(parent, glyph, cur) {
 
     ; Application controls.
     appLbl  := g.AddText("xm y74 cD6D6D6", "Program:")
-    pathEd  := g.AddEdit("xm y96 w320 Background3A3A3A cFFFFFF -E0x200 ReadOnly", cur.action = "app" ? cur.path : "")
+    pathEd  := g.AddEdit("xm y96 w320 r1 -Multi -Wrap Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.path : "")
     browse  := g.AddButton("xm y126 w120", "Browse…")
     argsLbl := g.AddText("xm y162 cD6D6D6", "Arguments (optional):")
     argsEd  := g.AddEdit("xm y184 w320 Background3A3A3A cFFFFFF -E0x200", cur.action = "app" ? cur.args : "")
