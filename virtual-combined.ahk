@@ -75,6 +75,15 @@ class VirtualGrid {
     static GdipToken := 0       ; GDI+ token (started once at init)
 }
 
+; Desktop back-stack ("browser back" for virtual desktops). The poll in CheckChord
+; records each desktop you leave; Ctrl+Win+Backspace walks back through it.
+class VirtualBack {
+    static Stack := []          ; desktops you've left, oldest first, newest last
+    static Last := 0            ; last-seen current desktop (0 = uninitialized)
+    static GoingBack := false   ; true while a back-nav is in flight (don't re-record it)
+    static Max := 10            ; how many steps of history to keep
+}
+
 ; ---- Init (auto-execute section) -------------------------------------------
 ; Distinct tray icon + tooltip so the single combined process is identifiable.
 ; A_ScriptDir is the entry script's dir (works whether run directly or #Included
@@ -138,6 +147,12 @@ return
 ^#NumpadDot:: RenameCurrentDesktop()
 ^#NumpadDel:: RenameCurrentDesktop()
 
+; --- Go back to the previous desktop (Ctrl+Win + Backspace) ---
+; No `~`, so the keypress is consumed (suppresses the default Windows action).
+; If your numpad's BS key sends a different code, run legacy/key-detector.ahk to
+; find it and change the key name below.
+^#Backspace:: GoBackDesktop()
+
 ; =============================================================================
 ; CLOSURE FACTORIES (for the runtime-registered Numpad hotkeys)
 ; Each call creates a fresh scope so the captured desktop number is correct
@@ -164,6 +179,31 @@ AdjacentDesktop(direction) {
 ; Switch directly to a numbered desktop, creating it if it doesn't exist yet.
 NavigateAbsolute(target) {
     VD.createUntil(target)
+    VD.goToDesktopNum(target)
+}
+
+; Record desktop changes into the back-stack. Runs from CheckChord every 75ms, so
+; it catches switches made any way (our hotkeys, native gestures, Task View, etc.).
+TrackDesktopHistory() {
+    cur := VD.getCurrentDesktopNum()
+    if (cur = VirtualBack.Last)
+        return
+    if (VirtualBack.GoingBack) {
+        VirtualBack.GoingBack := false        ; this change was the back-nav itself; don't record
+    } else if (VirtualBack.Last != 0) {
+        VirtualBack.Stack.Push(VirtualBack.Last)
+        while (VirtualBack.Stack.Length > VirtualBack.Max)
+            VirtualBack.Stack.RemoveAt(1)     ; drop the oldest beyond the cap
+    }
+    VirtualBack.Last := cur
+}
+
+; "Browser back" for desktops: return to the most recent one you came from.
+GoBackDesktop() {
+    if (VirtualBack.Stack.Length < 1)
+        return
+    target := VirtualBack.Stack.Pop()
+    VirtualBack.GoingBack := true
     VD.goToDesktopNum(target)
 }
 
@@ -290,6 +330,7 @@ ChordHeld() {
 }
 
 CheckChord() {
+    TrackDesktopHistory()
     if VirtualGrid.Naming
         return
     if ChordHeld()
