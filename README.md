@@ -21,16 +21,14 @@ Double click to execute them, and they will remain running until terminated via 
 
 The scripts in this library utilize FuPeiJiang's Virtual Desktop library **VD.ahk**, which adds AutoHotkey functions for managing virtual desktops. **It is bundled with this repo** (vendored as [`lib/VD.ah2`](lib/VD.ah2)), so there is nothing extra to download — a clone or ZIP download of this repository works on its own. See [`lib/UPSTREAM.md`](lib/UPSTREAM.md) for the source, version, and how to update it.
 
-To enable the hotkeys you want, you'll enter the `Win11AutoHotKeyFixes` folder and run the AHK scripts you want;
+The virtual-desktop features are bundled into a single script, **`VD-combined.ahk`**, launched by **`startup.ahk`** — so everything runs as **one process / one tray icon** ("Virtual Desktop Suite"). You just run `startup.ahk`.
 
-- `VD-move-window-with-desktop.ahk`
-- `VD-cascade.ahk`
-- `AppSpecificTabSwitcher.ahk`
-- `VD-pin-app.ahk`
+Two extra features live in their own standalone scripts (run them separately if you want them):
 
-These can be simply double-clicked to execute.
+- `VD-cascade.ahk` — cascade / tile windows
+- `AppSpecificTabSwitcher.ahk` — macOS-style ⌘-` app-window cycling
 
-*Details on what hotkeys each of these enable, and how to automatically start them with Windows, are below.*
+*The full hotkey list, and how to auto-start with Windows, are below.*
 
 ## Setup Process
 
@@ -44,12 +42,12 @@ That's it — the VD.ahk library is already bundled in `lib/`, so there is no se
 
 ## Running the Script
 
-Navigate to the `Win11AutoHotKeyFixes` and double-click the scripts you want to execute. 
+Double-click **`startup.ahk`**. That loads the whole virtual-desktop suite into a single tray icon. All the hotkeys below (navigate, move, numpad, pin, preview grid, rename) are then live.
 
-- `VD-move-window-with-desktop.ahk`
-- `VD-cascade.ahk`
-- `AppSpecificTabSwitcher.ahk`
-- `VD-pin-app.ahk`
+Optionally, also double-click the standalone extras if you want them:
+
+- `VD-cascade.ahk` — cascade / tile windows
+- `AppSpecificTabSwitcher.ahk` — app-window cycling
 
 ### Troubleshooting 
 
@@ -61,7 +59,7 @@ If you get any errors when you run the script, the most likely cause is;
 
 ### Automatically Installing these at Windows Startup 
 
-1. For each script you want to autostart with Windows, create a shortcut. 
+1. Create a shortcut to **`startup.ahk`** (and to any standalone extras you use, e.g. `VD-cascade.ahk`). 
 
 2. Press `Win+R` and type `shell:startup` to see your Windows startup folder. 
 
@@ -72,37 +70,44 @@ If you get any errors when you run the script, the most likely cause is;
 
 ## Usage
 
-Functionality is divided into 4 scripts- 
+These hotkeys come from the **suite** (`startup.ahk` → `VD-combined.ahk`). The numpad hotkeys assume **NumLock is ON** (they use the digit keys `Numpad1`–`Numpad9`).
 
-### Moving windows
+### Navigating desktops
 
-*Run the `VD-move-window-with-desktop.ahk` script.*
+ - `Ctrl + Win + Left` / `Right`: Switch to the previous / next desktop (wraps around)
+ - `Ctrl + Win + Numpad1…9`: Jump straight to desktop 1–9 (creates it if it doesn't exist)
 
- - `Win + Ctrl + Shift + Left`:  Move active window to the left desktop and follow it
- - `Win + Ctrl + Shift + Right`: Move active window to the right and follow it
+### Moving the active window
 
-### Cascading windows
+ - `Ctrl + Alt + Win + Left` / `Right`: Move window to the previous / next desktop **and follow it** (alias: `Ctrl + Win + Shift + Left/Right`)
+ - `Ctrl + Alt + Win + Numpad1…9`: Move window to desktop 1–9 and follow it
+ - `Alt + Win + Left` / `Right` (or `Numpad1…9`): Move window to that desktop but **stay** where you are
 
-*Run the `VD-cascade.ahk` script.*
+### Pinning apps / windows to every desktop
 
- - `Win + Alt + C`:  Cascade all windows on desktop
- - `Win + Alt + H`:  Tile all windows on desktop horizontally
- - `Win + Alt + V`:  Tile all windows on desktop vertically
- - Add `+ Shift` to any of the above: Will only Cascade/Tile matching executables (eg all chrome windows)
+ - `Ctrl + Win + Z`: Toggle pinning the active application's executable (all of its windows show on every desktop)
+ - `Ctrl + Win + X`: Toggle pinning only the currently focused window
 
-### App Specific Switcher (Command+`)
+### Desktop preview & naming
 
-*Run the `AppSpecificTabSwitcher.ahk` script.*
+ - **Hold `Ctrl + Win`**: Show a numpad-layout 3×3 preview of desktops 1–9 (1 = bottom-left, 9 = top-right) on the primary monitor, with the current desktop highlighted and each desktop's name shown. Release to dismiss.
+ - `Ctrl + Win + NumpadDot`: Rename the current desktop. Names use the native Windows 11 desktop names, so they persist and also appear in Task View.
 
- - ``Alt + ` ``:  Switch to most recent non-focused window of same app
- - ``Alt + Shift + ` ``:  Switch to oldest non-focused windows of same app
+---
 
-### Pinning apps/windows to every desktop
+The following come from the **standalone extras** (run their script separately):
 
-*Run the `VD-pin-app.ahk` script.*
+### Cascading / tiling windows — `VD-cascade.ahk`
 
- - `Ctrl + Win + Z`: Toggle pinning for the active application's executable (all of its windows show on every desktop)
- - `Ctrl + Win + X`: Toggle pinning for only the currently focused window
+ - `Win + Alt + C`:  Cascade all windows on the desktop
+ - `Win + Alt + H`:  Tile all windows horizontally
+ - `Win + Alt + V`:  Tile all windows vertically
+ - Add `+ Shift` to any of the above: only cascade/tile windows of the same executable (e.g. all Chrome windows)
+
+### App-specific switcher (macOS ⌘-`) — `AppSpecificTabSwitcher.ahk`
+
+ - ``Alt + ` ``:  Switch to the most recent non-focused window of the same app
+ - ``Alt + Shift + ` ``:  Switch to the oldest non-focused window of the same app
 
 ## Other 
 
