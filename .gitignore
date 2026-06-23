@@ -1,1 +1,4 @@
 *.ahk.bak
+.havoc/
+
+.mcp.json

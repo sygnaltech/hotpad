@@ -19,7 +19,8 @@ A hotkey + numpad virtual-desktop manager for Windows 11. One tray app to switch
 - **Preview HUD** — hold `Ctrl+Win` for a numpad-style map of desktops 1–10, the current one highlighted, with names.
 - **Name desktops** using the native Windows 11 desktop names (also shown in Task View).
 - **Back** to the previous desktop, browser-style.
-- **One Config dialog** (`Ctrl+Win+.` or the tray) — rename desktops, set keypad size, and edit launchers; saved per machine.
+- **Desktop alerts** *(opt-in)* — when Claude Code (or another tool) raises a notification, show a yellow dot on the desktop that needs attention plus a clickable list to jump there. Enable in **Config → Settings**.
+- **One Config dialog** (`Ctrl+Win+.` or the tray) — rename desktops, set keypad size, toggle desktop alerts, and edit launchers; saved per machine.
 
 ## Requirements & install
 
@@ -48,7 +49,7 @@ Double-click **`hotpad.ahk`** — it loads the whole suite into a single tray ic
 
 ### Pin & config
 - `Ctrl + Win + Z` / `X` — pin the active app / just the active window to every desktop
-- `Ctrl + Win + .` (NumpadDot) — open the **Config** dialog (tabs: **Desktop** to rename the current desktop, **Settings** for keypad size, **Launchers** to assign keys). Also on the tray menu as **Settings** / **Launchers**.
+- `Ctrl + Win + .` (NumpadDot) — open the **Config** dialog (tabs: **Desktop** to rename the current desktop, **Settings** for keypad size + desktop alerts, **Launchers** to assign keys). Also on the tray menu as **Settings** / **Launchers**.
 
 ### Launchers — apps & Chrome (configurable)
 Assign the keypad's operator keys — `+ − * / = ( ) Enter`, each prefixed with `Ctrl + Win` — to launch things. Open the **Config → Launchers** tab and double-click a key:
@@ -58,6 +59,18 @@ Assign the keypad's operator keys — `+ − * / = ( ) Enter`, each prefixed wit
 - Give the assignment a **name** and it shows under that key on the preview HUD.
 
 Out of the box, `Ctrl + Win + /` opens the Chrome profile menu.
+
+## Desktop alerts (opt-in)
+
+hotpad can surface **unaddressed notifications per virtual desktop** — handy when an agent like Claude Code finishes, or gets blocked, in a project on a desktop you aren't looking at.
+
+Enable it in **Config → Settings → Show desktop alerts** (off by default). Then, while holding `Ctrl+Win`:
+
+- a **yellow dot** appears on any desktop key with an unaddressed alert;
+- a **list** of recent alerts shows beside the keypad (`project [ Claude ]`), unresolved and newest first;
+- **click an alert** to jump to its desktop. Visiting a desktop marks its alerts resolved.
+
+**How alerts get there.** Any tool appends a line to `%APPDATA%\Sygnal HotPad\alerts.log` — `epoch <TAB> {desktop-GUID} <TAB> project <TAB> alerter`. The Sygnal **`notify`** skill writes this automatically for Claude Code; a self-contained reference writer lives in [`.claude/skills/alert/`](.claude/skills/alert/) for wiring into your own setup or porting to another language. hotpad only reads the log while the toggle is on.
 
 ## Standalone extras
 

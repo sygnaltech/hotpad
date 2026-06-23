@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# alert.ps1 — REFERENCE implementation of a desktop-aware notification.
+# Plays a tone, then records the alert against the virtual desktop this VS Code
+# session runs on (see SKILL.md for the alerts.log contract). The production path
+# is the system-wide `notify` skill; this stays as a self-contained example.
+# ---------------------------------------------------------------------------
 param(
     [Parameter(Position = 0)]
     [string]$Type = "problem",

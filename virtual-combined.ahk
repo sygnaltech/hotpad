@@ -68,7 +68,8 @@ class VirtualGrid {
     static ColPanel   := 0xFF2E2E2E  ; alert list panel background
 
     ; Persisted settings (loaded from the config file at startup).
-    static Scale := 1.0         ; keypad scale: 1.0 / 1.5 / 2.0 = Small / Medium / Large
+    static Scale := 1.0          ; keypad scale: 1.0 / 1.5 / 2.0 = Small / Medium / Large
+    static AlertsEnabled := false ; show desktop-alert dots + list (off by default)
 
     ; Runtime state.
     static Hud := 0             ; the layered Gui while created (kept hidden when not shown)
@@ -400,7 +401,8 @@ TrackDesktopHistory() {
             VirtualBack.Stack.RemoveAt(1)     ; drop the oldest beyond the cap
     }
     VirtualBack.Last := cur
-    MarkVisited(cur)   ; arriving at a desktop resolves its alerts (stamps the watermark)
+    if (VirtualGrid.AlertsEnabled)
+        MarkVisited(cur)   ; arriving at a desktop resolves its alerts (stamps the watermark)
 }
 
 ; "Browser back" for desktops: return to the most recent one you came from.
@@ -572,8 +574,13 @@ ShowOrUpdateGrid() {
 
     ; Build the alert model for this desktop (dots + list). When there are alerts,
     ; a panel hangs off the right of the keypad; the keypad itself stays centered.
-    LoadAlertsModel(current)
-    showPanel := Alerts.List.Length > 0
+    ; When the feature is off, clear the model so no dots/panel render at all.
+    if (VirtualGrid.AlertsEnabled) {
+        LoadAlertsModel(current)
+    } else {
+        Alerts.List := [], Alerts.UnresByNum := Map()
+    }
+    showPanel := VirtualGrid.AlertsEnabled && Alerts.List.Length > 0
     panelGap := showPanel ? Round(16 * s) : 0
     panelW   := showPanel ? Round(320 * s) : 0
     panelX   := kpW + panelGap
@@ -999,6 +1006,7 @@ ConfigFile() => A_AppData "\Sygnal HotPad\settings.ini"
 
 LoadConfig() {
     VirtualGrid.Scale := IniRead(ConfigFile(), "Keypad", "Scale", "1.0") + 0 ; +0 -> number
+    VirtualGrid.AlertsEnabled := (IniRead(ConfigFile(), "Alerts", "Enabled", "0") + 0) != 0
 }
 
 SaveScale(scale) {
@@ -1008,6 +1016,17 @@ SaveScale(scale) {
     IniWrite(scale, ConfigFile(), "Keypad", "Scale")
     VirtualGrid.Scale := scale
     VirtualGrid.ShownFor := -1 ; force a re-render at the new scale next time the keypad shows
+}
+
+; Persist the desktop-alerts on/off toggle. Display-only: notify.ps1 records
+; regardless; this controls whether hotpad reads the log and draws dots + list.
+SaveAlertsEnabled(on) {
+    dir := A_AppData "\Sygnal HotPad"
+    if !DirExist(dir)
+        DirCreate(dir)
+    IniWrite(on ? 1 : 0, ConfigFile(), "Alerts", "Enabled")
+    VirtualGrid.AlertsEnabled := !!on
+    VirtualGrid.ShownFor := -1 ; force a re-render so the change shows next time
 }
 
 ; Combined Desktop + Settings + Launchers dialog. Dark, with custom (on-theme)
@@ -1058,6 +1077,10 @@ ShowHotpadDialog(startTab := "desktop") {
     rS := dlg.AddRadio("xm y+10 cE0E0E0" (VirtualGrid.Scale < 1.25 ? " Checked" : ""), "Small  (100%)")
     rM := dlg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.25 && VirtualGrid.Scale < 1.75 ? " Checked" : ""), "Medium  (150%)")
     rL := dlg.AddRadio("xm y+6 cE0E0E0" (VirtualGrid.Scale >= 1.75 ? " Checked" : ""), "Large  (200%)")
+    dlg.SetFont("s10 Bold")
+    lblA := dlg.AddText("xm y+18 cD6D6D6", "Desktop alerts")
+    dlg.SetFont("s10 Norm")
+    cbA := dlg.AddCheckBox("xm y+10 cE0E0E0" (VirtualGrid.AlertsEnabled ? " Checked" : ""), "Show a dot + list for unaddressed notifications")
 
     ; --- Launchers panel: a Key | Action | Target table. Double-click a row (or
     ; Edit…) to assign it an app or Chrome+profile. ---
@@ -1107,7 +1130,7 @@ ShowHotpadDialog(startTab := "desktop") {
     dlg.SetFont("s10 Norm")
 
     desktopCtrls  := [lblD, edit]
-    settingsCtrls := [lblS, rS, rM, rL]
+    settingsCtrls := [lblS, rS, rM, rL, lblA, cbA]
     launcherCtrls := [lblL, lv]
 
     SwitchTab(which) {
@@ -1129,13 +1152,14 @@ ShowHotpadDialog(startTab := "desktop") {
     }
 
     Finish(savep) {
-        nm := edit.Value, sc := rS.Value ? 1.0 : rM.Value ? 1.5 : 2.0
+        nm := edit.Value, sc := rS.Value ? 1.0 : rM.Value ? 1.5 : 2.0, alertsOn := cbA.Value
         gOpen := 0
         dlg.Destroy()
         VirtualGrid.Naming := false   ; HUD rebuilds on next show (ShownFor was reset)
         if (savep) {
             VD.setNameToDesktopNum(nm, n)
             SaveScale(sc)
+            SaveAlertsEnabled(alertsOn)
             SaveLaunchers(workItems)
         }
     }
