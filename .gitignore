@@ -2,3 +2,7 @@
 .havoc/
 
 .mcp.json
+
+.gestalt/wal.jsonl
+.gestalt/backups/
+

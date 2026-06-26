@@ -1,0 +1,282 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "12ynleILt3S9D3gBzxA7nE",
+      "x": 490,
+      "y": 201,
+      "text": "Brand",
+      "source": "user",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:43:54.332Z"
+    },
+    {
+      "id": "75Cg9SWCDREGUqwKbQPtMW",
+      "x": 783,
+      "y": 107,
+      "text": "Naming research (Jun 22, w/ Quad): what to call the AHK virtual-desktop switcher whose Ctrl+Win hotkey pops a numpad-style dial grid for 10 desktops. Open source → must avoid commercial/OSS collisions & stay discoverable.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:21.223Z"
+    },
+    {
+      "id": "12oIvCaV2MUHfbAwmdiy05",
+      "x": 1125.0000000000002,
+      "y": 239,
+      "text": "Candidate names evaluated",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:22.784Z"
+    },
+    {
+      "id": "22IEoRo9ievhdGhPcuKuQn",
+      "x": 710,
+      "y": 460,
+      "text": "Brainstormed name ideas (by angle)",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:24.118Z"
+    },
+    {
+      "id": "31LB2YoA3f8hLvYSV6Jjzo",
+      "x": 932.0000000000001,
+      "y": 833,
+      "text": "Domain checks",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:26.347Z"
+    },
+    {
+      "id": "4DJYAJDzUEzb8iKMkq2zFk",
+      "x": 589,
+      "y": 768,
+      "text": "Outcome: Quad leaned Tenkey (safer legally), then after finding a direct same-niche \"Hotpad\" twin recommended a coined variant. User settled on \"hotpad\" anyway.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:29.131Z"
+    },
+    {
+      "id": "6R0HGYF5YZ9GzflvWj1tAl",
+      "x": 1425.0000000000002,
+      "y": 239,
+      "text": "Dialpad — REJECTED. Dialpad, Inc. (SF): well-funded AI unified-comms platform (voice/video/messaging/contact center), integrates Salesforce, Google Workspace, MS Teams. Same word + same software domain + budget to defend TM = worst-case collision.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:36.377Z"
+    },
+    {
+      "id": "2o5zsEXm2WVqJd8JpJpT3F",
+      "x": 1444.0000000000002,
+      "y": 403,
+      "text": "HotPad — chosen by user despite risks. TM/brand collisions: HotPads™ (Zillow rental-search marketplace, ~5M visits/mo since 2005), Hoteza \"HotPad\" hotel guest-services app, old HotPad.exe freeware. None in dev-tools so legal risk low, BUT discoverability is killed by Zillow. Worse: a DIRECT same-niche twin exists — dev spikest3r's \"Hotpad\" (itch.io, Qt/C++) maps numpad keys to actions/hotkeys on Windows. That twin (not Zillow) is the real reason Quad advised dropping it.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:39.736Z"
+    },
+    {
+      "id": "4woKxCqXB0gl0I818eBzdP",
+      "x": 1413.0000000000002,
+      "y": 683,
+      "text": "Tenkey — runner-up, Quad's safer pick. \"Tenkey/ten-key\" = generic term for numeric keypad (accounting/data-entry). Branded uses are scattered & niche: Judy's TenKey (Win calculator, mid-90s), Ten Key Software (cloud trial-balance accounting), Tenkey++ QMK numpad hardware (Lizard Trick), TENKEY Madrid clothing. No dominant owner of bare word & no same-name desktop switcher → low legal risk, but generic = weak distinctiveness + muddy search.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:42.638Z"
+    },
+    {
+      "id": "5u8cB3Snk1Wp3EDZuJSU4g",
+      "x": 1010,
+      "y": 460,
+      "text": "Tenkey angle (deca = ten; encodes 10-desktop count): Tenkey, TenkeySpaces, Decadial. De-risking variants: TenkeySwitch, TenkeyDesks, TenkeyVD, 10key (stylized), Decakey.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:47.153Z"
+    },
+    {
+      "id": "3DRqD8WEKpBXH3UZxRynTc",
+      "x": 1010,
+      "y": 560,
+      "text": "Grid/jump angle (jump to desktop via 3×3+0 grid): GridJump, Keygrid, PadJump, Numpad Navigator, Numjump, Padshift.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:49.092Z"
+    },
+    {
+      "id": "1MsRc8El8sHszbNdF9rZhh",
+      "x": 1010,
+      "y": 660,
+      "text": "Desktop-switching angle: DeskDial, Numdesk, Desk10, HotPad (plays on \"hotkey\").",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:53.498Z"
+    },
+    {
+      "id": "6i1Ua0OtFZhvKG4b3gaVBN",
+      "x": 1232,
+      "y": 833,
+      "text": ".com — both gone & live. hotpad.com = a rentals site (plus Zillow's HotPads). tenkey.com = Ten Key Accounting Solutions. Tenkey also spoken for around edges: TenKey.ai (AP-automation startup), tenkey.app (parked), TENKEY Madrid (clothing).",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:55.709Z"
+    },
+    {
+      "id": "0CzsxJtJETrgKTuaMTjKvz",
+      "x": 1232,
+      "y": 933,
+      "text": ".dev / .io / .org — could NOT confirm from chat (search ≠ registrar). Need live lookup at Porkbun / Cloudflare / Namecheap. Also worth checking GitHub org + Windows package channels (Scoop, Chocolatey, winget) since it's an AHK Windows tool.",
+      "source": "agent",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-24T05:49:57.521Z"
+    },
+    {
+      "id": "2Y0Sq0IVNw7PZpaTlnuBX0",
+      "x": 84.90767386091125,
+      "y": -166.67146282973613,
+      "text": "Hotkeys",
+      "source": "user",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-26T01:15:27.545Z"
+    },
+    {
+      "id": "7K5kCIStReZxRw3zFiV0o0",
+      "x": 384.90767386091125,
+      "y": -166.67146282973613,
+      "text": "RCTRL+NUMPAD key",
+      "source": "user",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-26T01:15:31.251Z"
+    },
+    {
+      "id": "111eOM9uSxy3N9kySkOWEp",
+      "x": 684.9076738609112,
+      "y": -166.67146282973613,
+      "text": "Echoes CTRL+WIN+NUMPAD key operation for one-handed use while eating.  Desktop switching only, no window move operations.",
+      "source": "user",
+      "status": "active",
+      "links": [],
+      "createdAt": "2026-06-26T01:15:46.845Z"
+    }
+  ],
+  "edges": [
+    {
+      "id": "xy-edge__12ynleILt3S9D3gBzxA7nEright-75Cg9SWCDREGUqwKbQPtMWleft",
+      "sourceId": "12ynleILt3S9D3gBzxA7nE",
+      "targetId": "75Cg9SWCDREGUqwKbQPtMW",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12ynleILt3S9D3gBzxA7nEright-12oIvCaV2MUHfbAwmdiy05left",
+      "sourceId": "12ynleILt3S9D3gBzxA7nE",
+      "targetId": "12oIvCaV2MUHfbAwmdiy05",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12ynleILt3S9D3gBzxA7nEright-22IEoRo9ievhdGhPcuKuQnleft",
+      "sourceId": "12ynleILt3S9D3gBzxA7nE",
+      "targetId": "22IEoRo9ievhdGhPcuKuQn",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12ynleILt3S9D3gBzxA7nEright-31LB2YoA3f8hLvYSV6Jjzoleft",
+      "sourceId": "12ynleILt3S9D3gBzxA7nE",
+      "targetId": "31LB2YoA3f8hLvYSV6Jjzo",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12ynleILt3S9D3gBzxA7nEright-4DJYAJDzUEzb8iKMkq2zFkleft",
+      "sourceId": "12ynleILt3S9D3gBzxA7nE",
+      "targetId": "4DJYAJDzUEzb8iKMkq2zFk",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12oIvCaV2MUHfbAwmdiy05right-6R0HGYF5YZ9GzflvWj1tAlleft",
+      "sourceId": "12oIvCaV2MUHfbAwmdiy05",
+      "targetId": "6R0HGYF5YZ9GzflvWj1tAl",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12oIvCaV2MUHfbAwmdiy05right-2o5zsEXm2WVqJd8JpJpT3Fleft",
+      "sourceId": "12oIvCaV2MUHfbAwmdiy05",
+      "targetId": "2o5zsEXm2WVqJd8JpJpT3F",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__12oIvCaV2MUHfbAwmdiy05right-4woKxCqXB0gl0I818eBzdPleft",
+      "sourceId": "12oIvCaV2MUHfbAwmdiy05",
+      "targetId": "4woKxCqXB0gl0I818eBzdP",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__22IEoRo9ievhdGhPcuKuQnright-5u8cB3Snk1Wp3EDZuJSU4gleft",
+      "sourceId": "22IEoRo9ievhdGhPcuKuQn",
+      "targetId": "5u8cB3Snk1Wp3EDZuJSU4g",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__22IEoRo9ievhdGhPcuKuQnright-3DRqD8WEKpBXH3UZxRynTcleft",
+      "sourceId": "22IEoRo9ievhdGhPcuKuQn",
+      "targetId": "3DRqD8WEKpBXH3UZxRynTc",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__22IEoRo9ievhdGhPcuKuQnright-1MsRc8El8sHszbNdF9rZhhleft",
+      "sourceId": "22IEoRo9ievhdGhPcuKuQn",
+      "targetId": "1MsRc8El8sHszbNdF9rZhh",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__31LB2YoA3f8hLvYSV6Jjzoright-6i1Ua0OtFZhvKG4b3gaVBNleft",
+      "sourceId": "31LB2YoA3f8hLvYSV6Jjzo",
+      "targetId": "6i1Ua0OtFZhvKG4b3gaVBN",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__31LB2YoA3f8hLvYSV6Jjzoright-0CzsxJtJETrgKTuaMTjKvzleft",
+      "sourceId": "31LB2YoA3f8hLvYSV6Jjzo",
+      "targetId": "0CzsxJtJETrgKTuaMTjKvz",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__2Y0Sq0IVNw7PZpaTlnuBX0right-7K5kCIStReZxRw3zFiV0o0left",
+      "sourceId": "2Y0Sq0IVNw7PZpaTlnuBX0",
+      "targetId": "7K5kCIStReZxRw3zFiV0o0",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    },
+    {
+      "id": "xy-edge__7K5kCIStReZxRw3zFiV0o0right-111eOM9uSxy3N9kySkOWEpleft",
+      "sourceId": "7K5kCIStReZxRw3zFiV0o0",
+      "targetId": "111eOM9uSxy3N9kySkOWEp",
+      "sourceHandle": "right",
+      "targetHandle": "left"
+    }
+  ]
+}
