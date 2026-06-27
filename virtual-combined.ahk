@@ -236,10 +236,10 @@ LoadLaunchers() {
         action := IniRead(f, sec, "Action", "")
         if (action = "") {
             if (!seeded && d.id = "div")   ; default seed
-                LaunchCfg.Items[d.id] := {action:"chrome", path:"", args:"", profile:"ask", name:"Chrome"}
+                LaunchCfg.Items[d.id] := {action:"chrome", path:"", args:"", profile:"ask", name:"Chrome", url:""}
             continue
         }
-        LaunchCfg.Items[d.id] := {action: action, path: IniRead(f, sec, "Path", ""), args: IniRead(f, sec, "Args", ""), profile: IniRead(f, sec, "Profile", "ask"), name: IniRead(f, sec, "Name", "")}
+        LaunchCfg.Items[d.id] := {action: action, path: IniRead(f, sec, "Path", ""), args: IniRead(f, sec, "Args", ""), profile: IniRead(f, sec, "Profile", "ask"), name: IniRead(f, sec, "Name", ""), url: IniRead(f, sec, "Url", "")}
     }
 }
 
@@ -258,6 +258,7 @@ SaveLaunchers(items) {
             IniWrite(e.HasOwnProp("args")    ? e.args    : "", f, sec, "Args")
             IniWrite(e.HasOwnProp("profile") ? e.profile : "ask", f, sec, "Profile")
             IniWrite(e.HasOwnProp("name")    ? e.name    : "", f, sec, "Name")
+            IniWrite(e.HasOwnProp("url")     ? e.url     : "", f, sec, "Url")
         } else {
             try IniDelete(f, sec)
         }
@@ -288,10 +289,11 @@ RunLauncher(id) {
         return
     e := LaunchCfg.Items[id]
     if (e.action = "chrome") {
+        url := e.HasOwnProp("url") ? e.url : ""
         if (e.profile = "ask" || e.profile = "")
-            ChromeMenu()
+            ChromeMenu(url)
         else
-            LaunchChromeProfile(e.profile)
+            LaunchChromeProfile(e.profile, url)
     } else if (e.action = "app") {
         if (e.path = "")
             return
@@ -314,19 +316,22 @@ RunLauncher(id) {
 ; The menu lists each Chrome profile by its folder name (Default, Profile 1, …),
 ; read live from disk so it works as-is on any machine.
 
-; Build the profile menu once (profiles rarely change; restart to refresh).
-ChromeMenu() {
-    static m := BuildChromeMenu()
+; Show the profile picker. Rebuilt each call so the chosen profile opens this
+; launcher's URL (the menu is per-launcher now). Kept in a static so the Menu
+; object stays alive while it's displayed.
+ChromeMenu(url := "") {
+    static m := 0
+    m := BuildChromeMenu(url)
     m.Show()
 }
 
-BuildChromeMenu() {
+BuildChromeMenu(url := "") {
     m := Menu()
     dirs := ChromeProfileDirs()
     for d in dirs
-        m.Add(d, ChromeProfileClosure(d))
+        m.Add(d, ChromeProfileClosure(d, url))
     if (dirs.Length = 0)   ; no profiles found -> a single "new window" entry
-        m.Add("New Chrome window", ChromeProfileClosure(""))
+        m.Add("New Chrome window", ChromeProfileClosure("", url))
     return m
 }
 
@@ -342,18 +347,20 @@ ChromeProfileDirs() {
     return dirs
 }
 
-ChromeProfileClosure(dir) => (*) => LaunchChromeProfile(dir)
+ChromeProfileClosure(dir, url := "") => (*) => LaunchChromeProfile(dir, url)
 
 ; Open `dir`'s profile in a NEW window on the current desktop (blank dir = let
-; Chrome use its default/last profile, still in a new window).
-LaunchChromeProfile(dir) {
+; Chrome use its default/last profile, still in a new window). If `url` is given,
+; the new window opens to it; otherwise Chrome opens its default new-tab page.
+LaunchChromeProfile(dir, url := "") {
     exe := ChromePath()
     if (exe = "") {
         MsgBox "Couldn't find Chrome — is it installed?", "Sygnal HotPad", "Icon!"
         return
     }
     prof := (dir = "") ? "" : '--profile-directory="' dir '" '
-    Run '"' exe '" ' prof '--new-window'
+    urlArg := (url != "") ? ' "' url '"' : ""
+    Run '"' exe '" ' prof '--new-window' urlArg
 }
 
 ; Resolve chrome.exe: App Paths registration first (robust, even off PATH), then
@@ -1049,7 +1056,7 @@ ShowHotpadDialog(startTab := "desktop") {
     ; A working copy of the launcher config the Launchers tab edits; committed on Save.
     workItems := Map()
     for id, e in LaunchCfg.Items
-        workItems[id] := {action: e.action, path: (e.HasOwnProp("path") ? e.path : ""), args: (e.HasOwnProp("args") ? e.args : ""), profile: (e.HasOwnProp("profile") ? e.profile : "ask"), name: (e.HasOwnProp("name") ? e.name : "")}
+        workItems[id] := {action: e.action, path: (e.HasOwnProp("path") ? e.path : ""), args: (e.HasOwnProp("args") ? e.args : ""), profile: (e.HasOwnProp("profile") ? e.profile : "ask"), name: (e.HasOwnProp("name") ? e.name : ""), url: (e.HasOwnProp("url") ? e.url : "")}
 
     dlg := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Sygnal HotPad")
     dlg.BackColor := "2B2B2B"
@@ -1116,7 +1123,7 @@ ShowHotpadDialog(startTab := "desktop") {
         if !row
             return
         d := LauncherDefs()[row]
-        cur := workItems.Has(d.id) ? workItems[d.id] : {action: "none", path: "", args: "", profile: "ask", name: ""}
+        cur := workItems.Has(d.id) ? workItems[d.id] : {action: "none", path: "", args: "", profile: "ask", name: "", url: ""}
         res := EditLauncher(dlg, d.glyph, cur)
         if (res != "") {
             workItems[d.id] := res
@@ -1217,6 +1224,8 @@ EditLauncher(parent, glyph, cur) {
     }
     profLbl := g.AddText("xm y134 cD6D6D6", "Profile:")
     profDDL := g.AddDropDownList("xm y156 w320 Choose" chooseIdx, profList)
+    urlLbl  := g.AddText("xm y194 cD6D6D6", "URL to open (optional):")
+    urlEd   := g.AddEdit("xm y216 w320 r1 -Multi -Wrap Background3A3A3A cFFFFFF -E0x200", (cur.action = "chrome" && cur.HasOwnProp("url")) ? cur.url : "")
 
     okBtn := g.AddButton("xm y294 w95 Default", "OK")
     cnBtn := g.AddButton("x+10 yp w95", "Cancel")
@@ -1227,7 +1236,7 @@ EditLauncher(parent, glyph, cur) {
             c.Visible := (m != 1)
         for c in [appLbl, pathEd, browse, argsLbl, argsEd]
             c.Visible := (m = 2)
-        for c in [profLbl, profDDL]
+        for c in [profLbl, profDDL, urlLbl, urlEd]
             c.Visible := (m = 3)
     }
 
@@ -1242,11 +1251,11 @@ EditLauncher(parent, glyph, cur) {
             m := actDDL.Value
             nm := nameEd.Value
             if (m = 1)
-                result := {action: "none", path: "", args: "", profile: "ask", name: ""}
+                result := {action: "none", path: "", args: "", profile: "ask", name: "", url: ""}
             else if (m = 2)
-                result := {action: "app", path: pathEd.Value, args: argsEd.Value, profile: "ask", name: nm}
+                result := {action: "app", path: pathEd.Value, args: argsEd.Value, profile: "ask", name: nm, url: ""}
             else
-                result := {action: "chrome", path: "", args: "", profile: (profDDL.Text = "Ask each time" ? "ask" : profDDL.Text), name: nm}
+                result := {action: "chrome", path: "", args: "", profile: (profDDL.Text = "Ask each time" ? "ask" : profDDL.Text), name: nm, url: Trim(urlEd.Value)}
         }
         g.Destroy()
     }
