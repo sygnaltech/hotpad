@@ -40,6 +40,7 @@ Double-click **`hotpad.ahk`** — it loads the whole suite into a single tray ic
 ### Navigate desktops
 - `Ctrl + Win + ←/→` — previous / next desktop (wraps around)
 - `Ctrl + Win + Numpad1…9` / `Numpad0` — jump straight to desktop 1–9 / 10
+- `RCtrl + Numpad1…9` / `Numpad0` — same jump, one-handed (Right-Ctrl is right next to the numpad — switch only, no window move)
 - `Ctrl + Win + Backspace` — back to the previous desktop you came from
 - **Hold `Ctrl + Win`** — show the numpad preview HUD (release to dismiss)
 

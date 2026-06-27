@@ -1,5 +1,27 @@
 # AGENTS.md
 
+## ⛔ After ANY code change: reload the tray app yourself
+
+hotpad is a long-running AutoHotkey v2 tray app. It loads its scripts **once at launch**, so source edits do nothing to the live process until it's restarted — the user **cannot test a change until you reload it**. Reloading is **your job, every time, automatically**. Never finish a change by telling the user to restart it.
+
+Do this as the final step of any edit to `hotpad.ahk`, `virtual-combined.ahk`, or anything they load:
+
+```powershell
+# 1. Validate syntax first (exit 0 = OK); don't reload a broken script.
+& "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe" /validate "d:\Projects\Tools\hotpad\hotpad.ahk"
+
+# 2. Stop ONLY the hotpad PID (match on command line — never Stop-Process -Name,
+#    which kills every AHK script the user is running).
+Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" |
+  Where-Object { $_.CommandLine -like '*hotpad.ahk*' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+# 3. Relaunch.
+Start-Process "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe" -ArgumentList '"d:\Projects\Tools\hotpad\hotpad.ahk"'
+```
+
+Then tell the user it's reloaded and ready to test — not that they need to reload it.
+
 ## Overview
 
 This document provides a detailed technical analysis of all AutoHotKey scripts in the Win11AutoHotKeyFixes repository. These scripts are designed to enhance Windows 11 window management capabilities and replicate useful macOS features.
@@ -440,8 +462,11 @@ Enable debugging output:
 |--------|--------|
 | `Ctrl + Win + Numpad1…9` | Switch directly to desktop 1–9 |
 | `Ctrl + Win + Numpad0` | Switch directly to desktop 10 |
+| `RCtrl + Numpad1…9 / Numpad0` | Switch directly to desktop 1–9 / 10 — one-handed echo of `Ctrl+Win+Numpad` (switch only, no window move) |
 | `Ctrl + Alt + Win + Numpad0…9` | Move window to that desktop (1–10) + follow |
 | `Alt + Win + Numpad0…9` | Move window to that desktop (1–10), stay |
+
+> The `RCtrl + Numpad` echo binds **Right-Ctrl only** (AHK `>^`), so it doesn't swallow plain Ctrl+Numpad and never collides with the `Ctrl+Win` / `Alt+Win` modifier hotkeys. Right-Ctrl sits beside the numpad, so the whole gesture is one-handed (intended for desktop-switching while the other hand is busy — e.g. eating). It registers in the same auto-execute loop as the other numpad hotkeys, so NumLock must be ON.
 
 ### Pinning
 

@@ -11,6 +11,7 @@
 ; Hotkeys ( ^ = Ctrl   ! = Alt   # = Win   + = Shift ):
 ;   Navigate (wrap-around):   Ctrl+Win+Left/Right
 ;   Navigate (absolute):      Ctrl+Win+Numpad1..9
+;   Navigate (one-handed):    RCtrl+Numpad1..9     (echoes Ctrl+Win+Numpad; switch only)
 ;   Move window + follow:     Ctrl+Alt+Win+Left/Right   (alias: Ctrl+Win+Shift+Left/Right)
 ;   Move window + follow:     Ctrl+Alt+Win+Numpad1..9
 ;   Move window + stay:       Alt+Win+Left/Right
@@ -139,6 +140,7 @@ Loop 10 {
     n := A_Index = 10 ? 0 : A_Index   ; the key digit (0 for the 10th)
     d := A_Index                      ; the desktop number (1..10)
     Hotkey "^#Numpad" n, NavigateAbsoluteClosure(d)    ; Ctrl+Win+N       -> switch to desktop d
+    Hotkey ">^Numpad" n, NavigateAbsoluteClosure(d)    ; RCtrl+N          -> switch to desktop d (one-handed echo)
     Hotkey "^!#Numpad" n, MoveAbsoluteFollowClosure(d) ; Ctrl+Alt+Win+N   -> move window to d + follow
     Hotkey "!#Numpad" n, MoveAbsoluteStayClosure(d)    ; Alt+Win+N        -> move window to d, stay
 }
